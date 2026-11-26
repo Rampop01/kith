@@ -220,17 +220,30 @@ function sortPromises(list: KPromise[]) {
   return [...list].sort((a, b) => (a.dueISO || '9999').localeCompare(b.dueISO || '9999'));
 }
 
-/** Match a spoken phrase ("Hi, I'm Ahmed from TVM") to a person. */
+/** Match a spoken phrase ("Hi, I'm Ahmed from TVM") to a person. Tolerates speech-to-text slips ("Vim Vim" -> Bimbim). */
 function findByName(text: string): KPerson | undefined {
-  const words = text.toLowerCase().replace(/[^\p{L}\s]/gu, ' ').split(/\s+/).filter((w) => w.length > 1);
+  const words = text.toLowerCase().replace(/[^\p{L}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+  const heard = [...words, ...words.slice(1).map((w, i) => words[i] + w)].filter((w) => w.length > 1); // also try "vim"+"vim"
   let best: KPerson | undefined, bestScore = 0;
   for (const p of Object.values(store.people)) {
-    const parts = [...p.name.toLowerCase().split(/\s+/), p.username?.toLowerCase() ?? ''].filter((x) => x.length > 1);
-    const score = parts.filter((part) => words.includes(part)).length;
+    const parts = [...p.name.toLowerCase().replace(/[^\p{L}\s]/gu, ' ').split(/\s+/), p.username?.toLowerCase() ?? ''].filter((x) => x.length > 1);
+    let score = 0;
+    for (const part of parts) {
+      if (heard.includes(part)) { score += 1; continue; }
+      if (part.length >= 4 && heard.some((w) => Math.abs(w.length - part.length) <= 2 && editDistance(w, part) <= Math.floor(part.length / 3))) score += 0.6;
+    }
     const recent = Date.parse(p.lastChatISO) / 1e13; // tie-break: more recent chat wins
     if (score > 0 && score + recent > bestScore) { best = p; bestScore = score + recent; }
   }
   return best;
+}
+
+function editDistance(a: string, b: string) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
 }
 
 async function lookup(personId: string) {
@@ -249,13 +262,26 @@ function pcmToWav(pcm: Buffer, sampleRate = 16000) {
   return Buffer.concat([h, pcm]);
 }
 
+/** Loudness of 16-bit PCM (0..32768). Silence makes Whisper hallucinate, so we skip it. */
+function rms(pcm: Buffer) {
+  let sum = 0; const n = Math.floor(pcm.length / 2);
+  for (let i = 0; i < n; i++) { const v = pcm.readInt16LE(i * 2); sum += v * v; }
+  return n ? Math.sqrt(sum / n) : 0;
+}
+
 async function transcribe(pcm: Buffer): Promise<string> {
+  const level = rms(pcm); if (process.env.KITH_DEBUG) console.log('  audio level', Math.round(level));
+  if (level < 200) return '';
   const form = new FormData();
   form.append('file', new Blob([pcmToWav(pcm)], { type: 'audio/wav' }), 'speech.wav');
   form.append('model', STT_MODEL);
   form.append('language', 'en');
+  // Hint the names of your contacts so unusual names ("Bimbim", "Adaeze") are spelled right.
+  const names = Object.values(store.people).map((p) => p.name).slice(0, 40).join(', ');
+  if (names) form.append('prompt', `Names: ${names}.`);
   const j = await groq('/audio/transcriptions', { method: 'POST', body: form });
-  return (j.text ?? '').trim();
+  const text = (j.text ?? '').trim();
+  return /^names\b/i.test(text) ? '' : text; // the model echoing our hint, not speech
 }
 
 // ---------- sending ----------
