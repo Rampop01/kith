@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Kith</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --sky: #3aa0ff; --sky2: #6cc6ff; --ice: #eaf5ff; --ink: #0e2a47; --soft: #5b7896;
+    --card: rgba(255,255,255,.86); --line: #d6e9fb; --red: #ff5a6e; --green: #22b07d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); min-height: 100vh;
+    background: radial-gradient(120% 60% at 100% 0%, #d4ecff 0%, transparent 60%),
+                radial-gradient(90% 50% at 0% 30%, #e3f3ff 0%, transparent 60%),
+                linear-gradient(180deg, #f3f9ff, #eaf4ff);
+  }
+  header {
+    position: relative; overflow: hidden; color: #fff; padding: 22px 20px 64px;
+    background: linear-gradient(135deg, #2b8cff 0%, #45b1ff 45%, #7fd3ff 100%);
+    border-radius: 0 0 28px 28px; box-shadow: 0 10px 30px rgba(43,140,255,.35);
+  }
+  header::after { /* shine */
+    content: ""; position: absolute; inset: -40% -10% auto auto; width: 70%; height: 160%;
+    background: linear-gradient(120deg, rgba(255,255,255,.0) 30%, rgba(255,255,255,.35) 50%, rgba(255,255,255,0) 70%);
+    transform: rotate(8deg); pointer-events: none;
+  }
+  .brand { font-weight: 800; font-size: 26px; letter-spacing: .5px; }
+  .tag { opacity: .92; font-size: 14px; margin-top: 2px; }
+  .stats { display: flex; gap: 10px; margin-top: 16px; }
+  .stat { flex: 1; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); border-radius: 16px; padding: 10px 12px; backdrop-filter: blur(6px); }
+  .stat b { display: block; font-size: 22px; }
+  .stat span { font-size: 12px; opacity: .95; }
+  nav {
+    position: sticky; top: 8px; z-index: 5; margin: -40px 16px 0; display: flex; gap: 4px; padding: 5px;
+    background: rgba(255,255,255,.9); border-radius: 18px; box-shadow: 0 8px 24px rgba(30,110,200,.15); backdrop-filter: blur(10px);
+  }
+  nav button {
+    flex: 1; border: 0; background: transparent; font: inherit; font-weight: 600; color: var(--soft);
+    padding: 10px 0; border-radius: 14px; cursor: pointer;
+  }
+  nav button.on { color: #fff; background: linear-gradient(135deg, var(--sky), var(--sky2)); box-shadow: 0 4px 12px rgba(58,160,255,.4); }
+  main { padding: 18px 16px 110px; }
+  h3 { margin: 22px 4px 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--soft); }
+  h3:first-child { margin-top: 4px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 14px;
+    margin-bottom: 10px; box-shadow: 0 6px 18px rgba(30,110,200,.08); backdrop-filter: blur(8px);
+  }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, #3aa0ff, #8fd8ff); box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+  }
+  .grow { flex: 1; min-width: 0; }
+  .name { font-size: 13px; color: var(--soft); }
+  .what { font-weight: 600; font-size: 16px; }
+  .chip { flex: none; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #e1f0ff; color: #1f74d1; }
+  .chip.late { background: #ffe5e9; color: #d63a50; }
+  .chip.none { background: #eef3f8; color: #7f93a8; }
+  .actions { display: none; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .open .actions { display: flex; }
+  .btn {
+    border: 0; font: inherit; font-weight: 600; font-size: 14px; padding: 9px 12px; border-radius: 12px; cursor: pointer;
+    background: #e9f4ff; color: #1f74d1;
+  }
+  .btn.primary { background: linear-gradient(135deg, var(--sky), var(--sky2)); color: #fff; box-shadow: 0 4px 12px rgba(58,160,255,.35); }
+  .btn.ghost { background: transparent; color: var(--soft); }
+  .btn.danger { background: #fff0f2; color: #d63a50; }
+  input[type=date], input[type=text], input[type=search] {
+    font: inherit; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff; color: var(--ink);
+  }
+  input[type=search] { width: 100%; margin-bottom: 12px; }
+  .meta { font-size: 13px; color: var(--soft); margin-top: 6px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .kv { margin-top: 8px; display: grid; gap: 4px; font-size: 14px; }
+  .kv div span { color: var(--soft); }
+  .empty { text-align: center; color: var(--soft); padding: 28px 10px; }
+  .note { font-size: 13px; color: var(--soft); background: rgba(255,255,255,.6); border: 1px dashed #bfdcf8; border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
+  .switch { position: relative; width: 48px; height: 28px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch i { position: absolute; inset: 0; background: #d4e3f1; border-radius: 999px; transition: .2s; }
+  .switch i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: .2s; }
+  .switch input:checked + i { background: linear-gradient(135deg, var(--sky), var(--sky2)); }
+  .switch input:checked + i::after { transform: translateX(20px); }
+  .done .what { text-decoration: line-through; color: var(--soft); }
+  .banner { margin: 0 0 12px; padding: 10px 12px; border-radius: 14px; background: #fff8e1; color: #8a6200; font-size: 13px; }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s 1s linear infinite; vertical-align: -1px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(80px); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 14px; font-size: 14px; transition: .25s; z-index: 9; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .savebar { position: fixed; left: 16px; right: 16px; bottom: 16px; display: none; }
+  .savebar.show { display: block; }
+  .savebar .btn { width: 100%; padding: 14px; font-size: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Kith</div>
+  <div class="tag">Remember everyone. Keep every promise.</div>
+  <div class="stats">
+    <div class="stat"><b id="s-owe">–</b><span>you owe</span></div>
+    <div class="stat"><b id="s-late">–</b><span>overdue</span></div>
+    <div class="stat"><b id="s-theyowe">–</b><span>owed to you</span></div>
+  </div>
+</header>
+<nav>
+  <button data-tab="promises" class="on">Promises</button>
+  <button data-tab="people">People</button>
+  <button data-tab="chats">Chats</button>
+</nav>
+<main id="main"><div class="empty"><span class="spin"></span> Loading…</div></main>
+<div class="savebar" id="savebar"><button class="btn primary" id="save">Save chat choices</button></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+try { tg?.setHeaderColor('#2b8cff'); tg?.setBackgroundColor('#f3f9ff'); } catch {}
+const haptic = (t = 'light') => { try { tg?.HapticFeedback.impactOccurred(t); } catch {} };
+
+let state = null, tab = ['promises', 'people', 'chats'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'promises', open = null, query = '', chosen = null;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const initials = (n) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+
+async function api(path, body) {
+  const r = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg?.initData ?? '' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error ?? 'Kith is offline');
+  return j;
+}
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+async function load() {
+  try { state = await api('/api/mini/state'); render(); }
+  catch (e) { $('#main').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  if (state?.indexing) setTimeout(load, 3000); // still reading chats
+}
+
+function render() {
+  const late = state.owed.filter((p) => p.overdue).length;
+  $('#s-owe').textContent = state.owed.length;
+  $('#s-late').textContent = late;
+  $('#s-theyowe').textContent = state.theyOwe.length;
+  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+  $('#main').innerHTML = (state.indexing ? `<div class="banner"><span class="spin"></span> Reading your chosen chats…</div>` : '') +
+    ({ promises: promisesView, people: peopleView, chats: chatsView })[tab]();
+  $('#savebar').classList.toggle('show', tab === 'chats' && chosen !== null);
+}
+
+function dueChip(p) {
+  if (!p.due) return `<span class="chip none">no date</span>`;
+  return `<span class="chip ${p.overdue ? 'late' : ''}">${esc(p.due)}</span>`;
+}
+
+function promiseCard(p, kept = false) {
+  return `<div class="card ${open === p.id ? 'open' : ''} ${kept ? 'done' : ''}" data-open="${p.id}">
+    <div class="row">
+      <div class="avatar">${esc(initials(p.personName))}</div>
+      <div class="grow"><div class="name">${esc(p.personName)}</div><div class="what">${esc(p.what)}</div></div>
+      ${kept ? '<span class="chip">kept</span>' : dueChip(p)}
+    </div>
+    ${p.deliverText && !kept ? `<div class="meta">Draft: “${esc(p.deliverText)}”</div>` : ''}
+    <div class="actions">
+      ${kept ? `<button class="btn" data-act="undo" data-id="${p.id}">Undo</button>` : `
+      <button class="btn primary" data-act="done" data-id="${p.id}">✅ Done</button>
+      <input type="date" data-act="date" data-id="${p.id}" value="${esc(p.dueISO ?? '')}">
+      <button class="btn" data-act="edit" data-id="${p.id}">✏️ Edit</button>
+      <button class="btn danger" data-act="delete" data-id="${p.id}">Not a promise</button>`}
+    </div>
+  </div>`;
+}
+
+function promisesView() {
+  const late = state.owed.filter((p) => p.overdue), soon = state.owed.filter((p) => !p.overdue && p.due), nodate = state.owed.filter((p) => !p.due);
+  let h = '';
+  if (!state.owed.length) h += `<div class="card empty">✨ You owe nobody anything. Promises kept!</div>`;
+  if (late.length) h += `<h3>Overdue</h3>` + late.map((p) => promiseCard(p)).join('');
+  if (soon.length) h += `<h3>Coming up</h3>` + soon.map((p) => promiseCard(p)).join('');
+  if (nodate.length) h += `<h3>No date</h3>` + nodate.map((p) => promiseCard(p)).join('');
+  if (state.theyOwe.length) h += `<h3>They owe you</h3>` + state.theyOwe.map((t) => `
+    <div class="card"><div class="row"><div class="avatar">${esc(initials(t.personName))}</div>
+    <div class="grow"><div class="name">${esc(t.personName)}</div><div class="what">${esc(t.what)}</div></div></div></div>`).join('');
+  if (state.kept.length) h += `<h3>Kept recently</h3>` + state.kept.map((p) => promiseCard(p, true)).join('');
+  return h;
+}
+
+function peopleView() {
+  const q = query.toLowerCase();
+  const list = state.people.filter((p) => !q || p.name.toLowerCase().includes(q) || (p.org ?? '').toLowerCase().includes(q));
+  return `<input type="search" id="q" placeholder="Search people" value="${esc(query)}">` + (list.length ? list.map((p) => `
+    <div class="card">
+      <div class="row"><div class="avatar">${esc(initials(p.name))}</div>
+        <div class="grow"><div class="what">${esc(p.name)}</div><div class="name">${esc(p.org || 'Telegram contact')}</div></div>
+        ${p.promises.length ? `<span class="chip ${p.promises.some((x) => x.overdue) ? 'late' : ''}">owe ${p.promises.length}</span>` : ''}
+      </div>
+      <div class="kv">
+        <div><span>Last chat:</span> ${esc(p.lastChat)}</div>
+        ${p.promises.map((x) => `<div><span>You owe:</span> ${esc(x.what)}${x.due ? ` (${esc(x.due)})` : ''}</div>`).join('')}
+        ${p.theyOwe ? `<div><span>They owe you:</span> ${esc(p.theyOwe)}</div>` : ''}
+        ${p.theyAsked ? `<div><span>They asked:</span> ${esc(p.theyAsked)}</div>` : ''}
+      </div>
+    </div>`).join('') : `<div class="empty">No one yet. Choose chats in the Chats tab.</div>`);
+}
+
+function chatsView() {
+  const sel = chosen ?? state.chats.filter((c) => c.chosen).map((c) => c.id);
+  return `<div class="note">🔒 Kith only reads the chats you switch on. Switching one off makes Kith forget what it learned from it.${state.demo ? '<br><b>Demo mode:</b> only demo chats are shown.' : ''}</div>
+    <button class="btn" data-act="refresh" style="margin-bottom:12px">↻ Re-read chats now</button>` +
+    state.chats.map((c) => `
+    <label class="card row" style="cursor:pointer">
+      <div class="avatar">${esc(initials(c.name))}</div>
+      <div class="grow"><div class="what">${esc(c.name)}</div><div class="name">Last message ${esc(c.lastChat)}${c.read ? ' · read by Kith' : ''}</div></div>
+      <span class="switch"><input type="checkbox" data-chat="${c.id}" ${sel.includes(c.id) ? 'checked' : ''}><i></i></span>
+    </label>`).join('');
+}
+
+// ---------- events ----------
+document.querySelector('nav').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  tab = b.dataset.tab; open = null; haptic(); render();
+});
+
+$('#main').addEventListener('input', (e) => {
+  if (e.target.id === 'q') { query = e.target.value; const pos = e.target.selectionStart; render(); const q = $('#q'); q.focus(); q.setSelectionRange(pos, pos); }
+});
+
+$('#main').addEventListener('change', async (e) => {
+  const t = e.target;
+  if (t.dataset.chat) {
+    const ids = new Set(chosen ?? state.chats.filter((c) => c.chosen).map((c) => c.id));
+    t.checked ? ids.add(t.dataset.chat) : ids.delete(t.dataset.chat);
+    chosen = [...ids]; haptic(); $('#savebar').classList.add('show');
+  }
+  if (t.dataset.act === 'date') {
+    state = await api(`/api/mini/promise/${t.dataset.id}`, { dueISO: t.value });
+    toast('Date updated'); render();
+  }
+});
+
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-act]');
+  if (b && b.tagName === 'BUTTON') {
+    e.stopPropagation();
+    const id = b.dataset.id;
+    try {
+      if (b.dataset.act === 'done') { haptic('medium'); state = await api(`/api/mini/promise/${id}`, { done: true }); open = null; toast('Promise kept ✅'); try { tg?.HapticFeedback.notificationOccurred('success'); } catch {} }
+      if (b.dataset.act === 'undo') { state = await api(`/api/mini/promise/${id}`, { done: false }); toast('Back on your list'); }
+      if (b.dataset.act === 'delete') { state = await api(`/api/mini/promise/${id}`, { delete: true }); open = null; toast('Removed'); }
+      if (b.dataset.act === 'edit') {
+        const p = state.owed.find((x) => x.id === id);
+        const v = prompt('What do you owe?', p?.what ?? '');
+        if (v && v.trim()) { state = await api(`/api/mini/promise/${id}`, { what: v }); toast('Saved'); }
+      }
+      if (b.dataset.act === 'refresh') { state = await api('/api/mini/refresh', {}); toast('Reading chats…'); setTimeout(load, 3000); }
+      render();
+    } catch (err) { toast(err.message); }
+    return;
+  }
+  if (e.target.closest('input')) return;
+  const c = e.target.closest('[data-open]');
+  if (c) { open = open === c.dataset.open ? null : c.dataset.open; haptic(); render(); }
+});
+
+$('#save').addEventListener('click', async () => {
+  try {
+    state = await api('/api/mini/chats', { ids: chosen });
+    chosen = null; toast('Saved. Kith is reading your chats…');
+    try { tg?.HapticFeedback.notificationOccurred('success'); } catch {}
+    render(); setTimeout(load, 3000);
+  } catch (err) { toast(err.message); }
+});
+
+load();
+</script>
+</body>
+</html>

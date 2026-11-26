@@ -5,6 +5,7 @@ import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { startBot } from './bot.ts';
 
 const PORT = 8787;
@@ -25,7 +26,7 @@ type KPerson = {
   id: string; name: string; username?: string; who: string; lastTopic: string;
   lastChatISO: string; theyAsked: string; theyOwe?: string; theyOweDueISO?: string; note?: string; analyzedAt?: string;
 };
-type Store = { people: Record<string, KPerson>; promises: KPromise[] };
+type Store = { people: Record<string, KPerson>; promises: KPromise[]; chosen?: string[] }; // chosen = chats the user lets Kith read
 
 // ---------- store ----------
 mkdirSync('data', { recursive: true });
@@ -107,8 +108,8 @@ async function analyzeChat(personId: string) {
   p.who = r.who ?? ''; p.lastTopic = r.lastTopic ?? ''; p.theyAsked = r.theyAsked ?? '';
   p.theyOwe = r.theyOwe ?? ''; p.theyOweDueISO = resolveDue(r.theyOweDue, r.theyOweSaid);
   p.analyzedAt = new Date().toISOString();
-  // replace this person's open promises with the fresh ones; keep ones the user already marked done
-  const kept = store.promises.filter((x) => x.personId !== personId || x.done);
+  // replace this person's chat-found open promises with fresh ones; keep done ones and ones caught out loud (not in the chat)
+  const kept = store.promises.filter((x) => x.personId !== personId || x.done || x.id.includes('-spoken-'));
   const fresh = (r.promises ?? []).map((x: any, i: number) => ({
     id: `${personId}-${Date.now()}-${i}`, personId, what: String(x.what ?? '').slice(0, 40),
     dueISO: resolveDue(x.due, x.said), deliverText: x.deliverText ?? '',
@@ -147,7 +148,8 @@ async function indexRecent() {
   if (indexing) return;
   indexing = true;
   try {
-    const ids = (await loadDialogs()).slice(0, MAX_CHATS);
+    const all = await loadDialogs();
+    const ids = store.chosen ? all.filter((id) => store.chosen!.includes(id)) : all.slice(0, MAX_CHATS);
     console.log(`Indexing ${ids.length} recent chats...`);
     for (const id of ids) {
       try { await analyzeChat(id); console.log(`  ok: ${store.people[id].name}`); }
@@ -354,6 +356,80 @@ async function endCatch(sessionId: string) {
   return { count: caught.length, caught };
 }
 
+// ---------- Telegram Mini App ----------
+/** Check Telegram's signature on Mini App initData; returns the Telegram user id or null. */
+function verifyInitData(initData: string): string | null {
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  if (!token || !initData) return null;
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash') ?? '';
+  params.delete('hash');
+  const check = [...params.entries()].map(([k, v]) => `${k}=${v}`).sort().join('\n');
+  const secret = createHmac('sha256', 'WebAppData').update(token).digest();
+  const calc = createHmac('sha256', secret).update(check).digest('hex');
+  if (hash.length !== calc.length || !timingSafeEqual(Buffer.from(hash), Buffer.from(calc))) return null;
+  if (Date.now() / 1000 - Number(params.get('auth_date') ?? 0) > 86400) return null; // older than a day
+  try { return String(JSON.parse(params.get('user') ?? '{}').id ?? '') || null; } catch { return null; }
+}
+
+// A request that came through the public tunnel (not from this laptop).
+const isPublic = (req: IncomingMessage) =>
+  !!req.headers['cf-connecting-ip'] || !/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host ?? '');
+
+function miniState() {
+  const name = (id: string) => store.people[id]?.name ?? '?';
+  const owed = sortPromises(openPromises()).map((p) => ({ ...promiseView(p), personName: name(p.personId) }));
+  const kept = store.promises.filter((p) => p.done).slice(-10).reverse().map((p) => ({ ...promiseView(p), personName: name(p.personId) }));
+  const people = Object.values(store.people)
+    .filter((p) => p.analyzedAt)
+    .sort((a, b) => b.lastChatISO.localeCompare(a.lastChatISO))
+    .map((p) => personView(p));
+  const theyOwe = people.filter((p) => p.theyOwe).map((p) => ({ personId: p.id, personName: p.name, what: p.theyOwe }));
+  const chats = Object.values(store.people)
+    .sort((a, b) => b.lastChatISO.localeCompare(a.lastChatISO))
+    .map((p) => ({ id: p.id, name: p.name, lastChat: ago(p.lastChatISO), read: !!p.analyzedAt,
+      chosen: store.chosen ? store.chosen.includes(p.id) : !!p.analyzedAt }));
+  return { owed, kept, theyOwe, people, chats, indexing, sendMode: SEND_MODE, demo: DEMO_IDS.length > 0 };
+}
+
+async function miniApi(req: IncomingMessage, res: ServerResponse, path: string) {
+  if (isPublic(req)) { // from the tunnel: only the owner, signed by Telegram
+    const uid = verifyInitData(String(req.headers['x-init-data'] ?? ''));
+    if (!uid || uid !== String(me.id)) return reply(res, 401, { error: 'Open Kith from your own Telegram.' });
+  }
+  if (req.method === 'GET' && path === '/api/mini/state') return reply(res, 200, miniState());
+
+  const m = path.match(/^\/api\/mini\/promise\/([\w-]+)$/);
+  if (req.method === 'POST' && m) {
+    const pr = store.promises.find((x) => x.id === m[1]);
+    if (!pr) return reply(res, 404, { error: 'not found' });
+    const b = JSON.parse((await readBody(req)).toString() || '{}');
+    if (b.delete) store.promises = store.promises.filter((x) => x !== pr);
+    if (typeof b.done === 'boolean') pr.done = b.done;
+    if (typeof b.what === 'string' && b.what.trim()) pr.what = b.what.trim().slice(0, 40);
+    if (typeof b.dueISO === 'string' && (b.dueISO === '' || /^\d{4}-\d{2}-\d{2}$/.test(b.dueISO))) pr.dueISO = b.dueISO;
+    save();
+    return reply(res, 200, miniState());
+  }
+
+  if (req.method === 'POST' && path === '/api/mini/chats') {
+    const b = JSON.parse((await readBody(req)).toString() || '{}');
+    const ids: string[] = (b.ids ?? []).map(String).filter((id: string) => store.people[id]);
+    store.chosen = ids;
+    // forget what Kith learned from chats you turned off
+    for (const p of Object.values(store.people)) if (!ids.includes(p.id)) {
+      Object.assign(p, { who: '', lastTopic: '', theyAsked: '', theyOwe: '', theyOweDueISO: '', analyzedAt: undefined });
+      store.promises = store.promises.filter((x) => x.personId !== p.id || x.done);
+    }
+    save();
+    indexRecent(); // read newly chosen chats in the background
+    return reply(res, 200, miniState());
+  }
+
+  if (req.method === 'POST' && path === '/api/mini/refresh') { indexRecent(); return reply(res, 200, { ...miniState(), indexing: true }); }
+  return reply(res, 404, { error: 'not found' });
+}
+
 // ---------- http ----------
 const readBody = (req: IncomingMessage) => new Promise<Buffer>((res, rej) => {
   const chunks: Buffer[] = [];
@@ -364,7 +440,7 @@ function reply(res: ServerResponse, code: number, body: unknown) {
   res.writeHead(code, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Init-Data',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
   });
   res.end(JSON.stringify(body));
@@ -375,6 +451,14 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   try {
     if (req.method === 'OPTIONS') return reply(res, 204, {});
+
+    // Mini App page + its API are the only things reachable through the public tunnel.
+    if (req.method === 'GET' && (path === '/mini' || path === '/mini/')) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(readFileSync(new URL('../miniapp/index.html', import.meta.url)));
+    }
+    if (path.startsWith('/api/mini/')) return await miniApi(req, res, path);
+    if (isPublic(req)) return reply(res, 404, { error: 'not found' });
 
     if (req.method === 'GET' && path === '/api/home') {
       const owed = sortPromises(openPromises()).map((p) => ({ ...promiseView(p), personName: store.people[p.personId]?.name ?? '?' }));
@@ -452,4 +536,13 @@ startBot({
   owed: () => sortPromises(openPromises()).map((p) => ({ ...promiseView(p), personName: store.people[p.personId]?.name ?? '?' })),
   markDone: (id) => { const pr = store.promises.find((x) => x.id === id && !x.done); if (pr) { pr.done = true; save(); } return !!pr; },
   digestHour: Number(process.env.KITH_DIGEST_HOUR ?? 8),
-}).then((b) => { if (b) notifyOwner = b.notify; }).catch((e) => console.log('Bot failed to start:', e.message));
+}).then((b) => {
+  if (!b) return;
+  notifyOwner = b.notify;
+  // npm run tunnel writes the public https URL here; point the bot's Mini App button at it.
+  let current = '';
+  setInterval(() => {
+    const url = existsSync('data/public-url.txt') ? readFileSync('data/public-url.txt', 'utf8').trim() : '';
+    if (url && url !== current) { current = url; b.setMiniApp(url).catch((e) => console.log('Mini App button failed:', e.message)); }
+  }, 3000);
+}).catch((e) => console.log('Bot failed to start:', e.message));

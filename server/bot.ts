@@ -32,13 +32,25 @@ export async function startBot(deps: Deps) {
   const state: { lastDigest?: string; started?: boolean } = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {};
   const saveState = () => writeFileSync(STATE, JSON.stringify(state), { mode: 0o600 });
 
+  // Mini App (light-blue home base). URL comes from the tunnel (data/public-url.txt), set via setMiniApp().
+  let appUrl = '';
+  const appButton = () => (appUrl ? [[new Api.KeyboardButtonWebView({ text: '📋 Open Kith', url: appUrl })]] : []);
+  const setMiniApp = async (url: string) => {
+    appUrl = url.replace(/\/$/, '') + '/mini';
+    await bot.invoke(new Api.bots.SetBotMenuButton({
+      userId: new Api.InputUserEmpty(), button: new Api.BotMenuButton({ text: 'Kith', url: appUrl }),
+    }));
+    console.log(`Mini App: ${appUrl}`);
+  };
+
   const digest = () => {
     const owed = deps.owed();
-    if (!owed.length) return { text: '✨ Kith: you owe nobody anything right now. Promises kept!', buttons: undefined };
+    if (!owed.length) return { text: '✨ Kith: you owe nobody anything right now. Promises kept!', buttons: appUrl ? appButton() : undefined };
     const lines = owed.slice(0, 10).map((p, i) =>
       `${i + 1}. ${p.overdue ? '🔴' : '🔵'} <b>${esc(p.personName)}</b>: ${esc(p.what)}${p.due ? ` <i>(${esc(p.due)})</i>` : ''}`);
     const text = `☀️ <b>Kith: you owe ${owed.length} ${owed.length === 1 ? 'thing' : 'things'}</b>\n\n${lines.join('\n')}\n\nOpen Kith on your G2 to deliver with one tap.`;
-    const buttons = owed.slice(0, 10).map((p, i) => [Button.inline(`✅ ${i + 1}. Done: ${p.what.slice(0, 24)}`, Buffer.from('done:' + p.id))]);
+    const buttons: any[][] = owed.slice(0, 10).map((p, i) => [Button.inline(`✅ ${i + 1}. Done: ${p.what.slice(0, 24)}`, Buffer.from('done:' + p.id))]);
+    buttons.push(...appButton());
     return { text, buttons };
   };
 
@@ -61,7 +73,11 @@ export async function startBot(deps: Deps) {
       return sendDigest();
     }
     if (text.startsWith('/today')) return sendDigest();
-    await m.reply({ message: 'Commands: /today' });
+    if (text.startsWith('/app')) {
+      if (!appUrl) return m.reply({ message: 'The Kith app is offline right now.' });
+      return bot.sendMessage(deps.ownerId, { message: 'Your promises, people and chat settings:', buttons: appButton() });
+    }
+    await m.reply({ message: 'Commands: /today, /app' });
   }, new NewMessage({}));
 
   bot.addEventHandler(async (ev: CallbackQueryEvent) => {
@@ -87,7 +103,7 @@ export async function startBot(deps: Deps) {
 
   console.log(`Bot @${me.username} ready (owner only). Daily digest at ${hour}:00.`);
   const notify = async (html: string) => { await bot.sendMessage(deps.ownerId, { message: html, parseMode: 'html' }); };
-  return { sendDigest, notify };
+  return { sendDigest, notify, setMiniApp };
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

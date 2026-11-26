@@ -11,7 +11,8 @@
     "tg:login": "node --env-file=.env server/tg-login.ts",
     "tg:login:qr": "node --env-file=.env server/tg-login-qr.ts",
     "server": "node --env-file=.env server/index.ts",
-    "server:demo": "KITH_CACHE=demo KITH_SEND_MODE=live node --env-file=.env server/index.ts"
+    "server:demo": "KITH_CACHE=demo KITH_SEND_MODE=live node --env-file=.env server/index.ts",
+    "tunnel": "node server/tunnel.ts"
   },
   "keywords": [],
   "author": "",
