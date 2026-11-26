@@ -1,0 +1,21 @@
+{
+  "package_id": "com.kithapp.kith",
+  "edition": "202601",
+  "name": "Kith",
+  "version": "0.1.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Kith talks to its own server to look up people and promises from your Telegram.",
+      "whitelist": ["http://localhost:8787"]
+    },
+    {
+      "name": "g2-microphone",
+      "desc": "Kith listens only when you tap, to hear the name of the person you are meeting."
+    }
+  ],
+  "supported_languages": ["en"]
+}

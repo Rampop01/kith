@@ -1,0 +1,32 @@
+{
+  "name": "kith",
+  "version": "1.0.0",
+  "description": "Kith: Telegram memory for face-to-face moments on Even G2",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5180 --strictPort",
+    "build": "vite build",
+    "sim": "evenhub-simulator http://localhost:5180 --automation-port 9898",
+    "pack": "vite build && evenhub pack app.json ./dist -o kith.ehpk",
+    "tg:login": "node --env-file=.env server/tg-login.ts",
+    "tg:login:qr": "node --env-file=.env server/tg-login-qr.ts",
+    "server": "node --env-file=.env server/index.ts",
+    "server:demo": "KITH_CACHE=demo KITH_SEND_MODE=live node --env-file=.env server/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@evenrealities/evenhub-cli": "^0.2.0",
+    "@evenrealities/evenhub-simulator": "^0.9.5",
+    "@types/node": "^26.6.10",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "^0.0.16",
+    "qrcode-terminal": "^0.12.0",
+    "telegram": "^2.26.22"
+  }
+}

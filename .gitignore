@@ -1,0 +1,12 @@
+node_modules
+dist
+*.ehpk
+.env
+.env.*
+*.session
+.tg-session
+data/
+.bot-session
+glasses_*.png
+.DS_Store
+!.env.example
