@@ -7,13 +7,13 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
-    --sky: #3aa0ff; --sky2: #6cc6ff; --ice: #eaf5ff; --ink: #0e2a47; --soft: #5b7896;
-    --card: rgba(255,255,255,.86); --line: #d6e9fb; --red: #ff5a6e; --green: #22b07d;
+    --sky: #3aa0ff; --sky2: #6cc6ff; --ink: #0e2a47; --soft: #5b7896;
+    --card: rgba(255,255,255,.88); --line: #d6e9fb; --red: #ff5a6e; --green: #22b07d;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; }
   body {
-    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
     color: var(--ink); min-height: 100vh;
     background: radial-gradient(120% 60% at 100% 0%, #d4ecff 0%, transparent 60%),
                 radial-gradient(90% 50% at 0% 30%, #e3f3ff 0%, transparent 60%),
@@ -24,12 +24,14 @@
     background: linear-gradient(135deg, #2b8cff 0%, #45b1ff 45%, #7fd3ff 100%);
     border-radius: 0 0 28px 28px; box-shadow: 0 10px 30px rgba(43,140,255,.35);
   }
-  header::after { /* shine */
+  header.tall { padding-bottom: 34px; }
+  header::after {
     content: ""; position: absolute; inset: -40% -10% auto auto; width: 70%; height: 160%;
-    background: linear-gradient(120deg, rgba(255,255,255,.0) 30%, rgba(255,255,255,.35) 50%, rgba(255,255,255,0) 70%);
+    background: linear-gradient(120deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.35) 50%, rgba(255,255,255,0) 70%);
     transform: rotate(8deg); pointer-events: none;
   }
   .brand { font-weight: 800; font-size: 26px; letter-spacing: .5px; }
+  .brand small { font-size: 11px; font-weight: 700; vertical-align: middle; margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.25); letter-spacing: .5px; }
   .tag { opacity: .92; font-size: 14px; margin-top: 2px; }
   .stats { display: flex; gap: 10px; margin-top: 16px; }
   .stat { flex: 1; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); border-radius: 16px; padding: 10px 12px; backdrop-filter: blur(6px); }
@@ -37,25 +39,19 @@
   .stat span { font-size: 12px; opacity: .95; }
   nav {
     position: sticky; top: 8px; z-index: 5; margin: -40px 16px 0; display: flex; gap: 4px; padding: 5px;
-    background: rgba(255,255,255,.9); border-radius: 18px; box-shadow: 0 8px 24px rgba(30,110,200,.15); backdrop-filter: blur(10px);
+    background: rgba(255,255,255,.92); border-radius: 18px; box-shadow: 0 8px 24px rgba(30,110,200,.15); backdrop-filter: blur(10px);
   }
-  nav button {
-    flex: 1; border: 0; background: transparent; font: inherit; font-weight: 600; color: var(--soft);
-    padding: 10px 0; border-radius: 14px; cursor: pointer;
-  }
+  nav button { flex: 1; border: 0; background: transparent; font: inherit; font-weight: 600; font-size: 14px; color: var(--soft); padding: 10px 0; border-radius: 14px; cursor: pointer; }
   nav button.on { color: #fff; background: linear-gradient(135deg, var(--sky), var(--sky2)); box-shadow: 0 4px 12px rgba(58,160,255,.4); }
   main { padding: 18px 16px 110px; }
+  h2 { margin: 6px 4px 8px; font-size: 22px; }
   h3 { margin: 22px 4px 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--soft); }
   h3:first-child { margin-top: 4px; }
-  .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 14px;
-    margin-bottom: 10px; box-shadow: 0 6px 18px rgba(30,110,200,.08); backdrop-filter: blur(8px);
-  }
+  p.lead { margin: 0 4px 16px; color: var(--soft); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; margin-bottom: 10px; box-shadow: 0 6px 18px rgba(30,110,200,.08); backdrop-filter: blur(8px); }
   .row { display: flex; align-items: center; gap: 12px; }
-  .avatar {
-    width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; color: #fff;
-    background: linear-gradient(135deg, #3aa0ff, #8fd8ff); box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
-  }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; color: #fff; background: linear-gradient(135deg, #3aa0ff, #8fd8ff); box-shadow: inset 0 1px 0 rgba(255,255,255,.5); }
+  .icon { width: 40px; height: 40px; border-radius: 12px; flex: none; display: grid; place-items: center; font-size: 20px; background: #e6f3ff; }
   .grow { flex: 1; min-width: 0; }
   .name { font-size: 13px; color: var(--soft); }
   .what { font-weight: 600; font-size: 16px; }
@@ -64,23 +60,25 @@
   .chip.none { background: #eef3f8; color: #7f93a8; }
   .actions { display: none; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .open .actions { display: flex; }
-  .btn {
-    border: 0; font: inherit; font-weight: 600; font-size: 14px; padding: 9px 12px; border-radius: 12px; cursor: pointer;
-    background: #e9f4ff; color: #1f74d1;
-  }
+  .btn { border: 0; font: inherit; font-weight: 600; font-size: 14px; padding: 9px 12px; border-radius: 12px; cursor: pointer; background: #e9f4ff; color: #1f74d1; }
   .btn.primary { background: linear-gradient(135deg, var(--sky), var(--sky2)); color: #fff; box-shadow: 0 4px 12px rgba(58,160,255,.35); }
-  .btn.ghost { background: transparent; color: var(--soft); }
+  .btn.big { width: 100%; padding: 15px; font-size: 16px; border-radius: 16px; }
   .btn.danger { background: #fff0f2; color: #d63a50; }
-  input[type=date], input[type=text], input[type=search] {
-    font: inherit; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff; color: var(--ink);
+  .btn.link { background: transparent; color: var(--soft); width: 100%; }
+  .btn:disabled { opacity: .55; }
+  input[type=date], input[type=text], input[type=tel], input[type=password], input[type=search], select {
+    font: inherit; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff; color: var(--ink);
   }
+  input.field { width: 100%; font-size: 18px; padding: 14px; margin: 6px 0 12px; border-radius: 14px; }
+  input.code { letter-spacing: 8px; text-align: center; font-size: 26px; font-weight: 700; }
   input[type=search] { width: 100%; margin-bottom: 12px; }
   .meta { font-size: 13px; color: var(--soft); margin-top: 6px; }
-  .meta b { color: var(--ink); font-weight: 600; }
   .kv { margin-top: 8px; display: grid; gap: 4px; font-size: 14px; }
   .kv div span { color: var(--soft); }
   .empty { text-align: center; color: var(--soft); padding: 28px 10px; }
-  .note { font-size: 13px; color: var(--soft); background: rgba(255,255,255,.6); border: 1px dashed #bfdcf8; border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
+  .note { font-size: 13px; color: var(--soft); background: rgba(255,255,255,.65); border: 1px dashed #bfdcf8; border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
+  .warn { font-size: 13px; background: #fff8e1; color: #8a6200; border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
+  .err { color: #d63a50; font-size: 14px; margin: -4px 4px 10px; min-height: 1em; }
   .switch { position: relative; width: 48px; height: 28px; flex: none; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .switch i { position: absolute; inset: 0; background: #d4e3f1; border-radius: 999px; transition: .2s; }
@@ -88,33 +86,41 @@
   .switch input:checked + i { background: linear-gradient(135deg, var(--sky), var(--sky2)); }
   .switch input:checked + i::after { transform: translateX(20px); }
   .done .what { text-decoration: line-through; color: var(--soft); }
-  .banner { margin: 0 0 12px; padding: 10px 12px; border-radius: 14px; background: #fff8e1; color: #8a6200; font-size: 13px; }
+  .banner { margin: 0 0 12px; padding: 10px 12px; border-radius: 14px; background: #e6f3ff; color: #1f63b0; font-size: 13px; }
   .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s 1s linear infinite; vertical-align: -1px; }
   @keyframes s { to { transform: rotate(360deg); } }
-  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(80px); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 14px; font-size: 14px; transition: .25s; z-index: 9; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(90px); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 14px; font-size: 14px; transition: .25s; z-index: 9; max-width: 90%; text-align: center; }
   .toast.show { transform: translateX(-50%) translateY(0); }
-  .savebar { position: fixed; left: 16px; right: 16px; bottom: 16px; display: none; }
+  .savebar { position: fixed; left: 16px; right: 16px; bottom: 16px; display: none; z-index: 6; }
   .savebar.show { display: block; }
-  .savebar .btn { width: 100%; padding: 14px; font-size: 16px; }
+  .feature { display: flex; gap: 12px; align-items: flex-start; padding: 10px 2px; }
+  .feature b { display: block; }
+  .feature span { color: var(--soft); font-size: 14px; }
+  .meter { height: 8px; border-radius: 99px; background: #dcebf9; overflow: hidden; margin: 8px 0 4px; }
+  .meter i { display: block; height: 100%; background: linear-gradient(90deg, var(--sky), var(--sky2)); }
+  .steps { display: flex; gap: 6px; margin: 0 4px 14px; }
+  .steps i { flex: 1; height: 4px; border-radius: 9px; background: #d4e6f7; }
+  .steps i.on { background: var(--sky); }
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">Kith</div>
+<header id="hdr">
+  <div class="brand">Kith <small>BETA</small></div>
   <div class="tag">Remember everyone. Keep every promise.</div>
-  <div class="stats">
+  <div class="stats" id="stats" style="display:none">
     <div class="stat"><b id="s-owe">–</b><span>you owe</span></div>
     <div class="stat"><b id="s-late">–</b><span>overdue</span></div>
     <div class="stat"><b id="s-theyowe">–</b><span>owed to you</span></div>
   </div>
 </header>
-<nav>
+<nav id="nav" style="display:none">
   <button data-tab="promises" class="on">Promises</button>
   <button data-tab="people">People</button>
   <button data-tab="chats">Chats</button>
+  <button data-tab="you">You</button>
 </nav>
 <main id="main"><div class="empty"><span class="spin"></span> Loading…</div></main>
-<div class="savebar" id="savebar"><button class="btn primary" id="save">Save chat choices</button></div>
+<div class="savebar" id="savebar"><button class="btn primary big" id="save">Save chat choices</button></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -122,11 +128,14 @@ const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 try { tg?.setHeaderColor('#2b8cff'); tg?.setBackgroundColor('#f3f9ff'); } catch {}
 const haptic = (t = 'light') => { try { tg?.HapticFeedback.impactOccurred(t); } catch {} };
+const success = () => { try { tg?.HapticFeedback.notificationOccurred('success'); } catch {} };
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-let state = null, tab = ['promises', 'people', 'chats'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'promises', open = null, query = '', chosen = null;
+let me = null, state = null, tab = ['promises', 'people', 'chats', 'you'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'promises';
+let open = null, query = '', chosen = null, step = 'welcome', phone = '';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const initials = (n) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+const initials = (n) => String(n || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 async function api(path, body) {
   const r = await fetch(path, {
@@ -135,42 +144,138 @@ async function api(path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error ?? 'Kith is offline');
+  if (!r.ok) throw Object.assign(new Error(j.error ?? 'Kith is offline. Try again soon.'), { status: r.status });
   return j;
 }
-
 function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1800);
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function confirmBox(msg) {
+  return new Promise((res) => { if (tg?.showConfirm && tg.initData) tg.showConfirm(msg, res); else res(confirm(msg)); });
 }
 
-async function load() {
-  try { state = await api('/api/mini/state'); render(); }
-  catch (e) { $('#main').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
-  if (state?.indexing) setTimeout(load, 3000); // still reading chats
+// ================= boot =================
+async function boot() {
+  try {
+    me = await api('/api/mini/me');
+    state = me.state;
+    render();
+    if (state?.indexing) poll();
+  } catch (e) {
+    $('#main').innerHTML = e.status === 401
+      ? `<div class="card empty">Open Kith from Telegram:<br><br><a class="btn primary" href="https://t.me/kith_memory_bot">@kith_memory_bot</a></div>`
+      : `<div class="card empty">${esc(e.message)}<br><br><button class="btn" onclick="boot()">Try again</button></div>`;
+  }
+}
+async function poll() {
+  setTimeout(async () => {
+    try { state = await api('/api/mini/state'); render(); if (state.indexing) poll(); } catch {}
+  }, 3000);
 }
 
 function render() {
-  const late = state.owed.filter((p) => p.overdue).length;
+  const connected = me?.connected;
+  $('#nav').style.display = connected ? 'flex' : 'none';
+  $('#stats').style.display = connected ? 'flex' : 'none';
+  $('#hdr').classList.toggle('tall', !connected);
+  $('#savebar').classList.toggle('show', connected && tab === 'chats' && chosen !== null);
+  if (!connected) { $('#main').innerHTML = onboarding(); return; }
   $('#s-owe').textContent = state.owed.length;
-  $('#s-late').textContent = late;
+  $('#s-late').textContent = state.owed.filter((p) => p.overdue).length;
   $('#s-theyowe').textContent = state.theyOwe.length;
   document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
   $('#main').innerHTML = (state.indexing ? `<div class="banner"><span class="spin"></span> Reading your chosen chats…</div>` : '') +
-    ({ promises: promisesView, people: peopleView, chats: chatsView })[tab]();
-  $('#savebar').classList.toggle('show', tab === 'chats' && chosen !== null);
+    ({ promises: promisesView, people: peopleView, chats: chatsView, you: youView })[tab]();
 }
 
-function dueChip(p) {
-  if (!p.due) return `<span class="chip none">no date</span>`;
-  return `<span class="chip ${p.overdue ? 'late' : ''}">${esc(p.due)}</span>`;
+// ================= onboarding =================
+function onboarding() {
+  const b = me.beta;
+  const bar = `<div class="meter"><i style="width:${Math.min(100, b.used / b.max * 100)}%"></i></div><div class="meta">${b.used} of ${b.max} beta spots taken</div>`;
+  if (step === 'welcome' && b.full) {
+    return `<h2>The beta is full</h2><p class="lead">Kith is in a small, free beta while we make sure it is safe and fast.</p>
+      <div class="card">${bar}</div>
+      ${b.waitlisted ? `<div class="card empty">✅ You're on the waitlist. We'll message you here in Telegram when a spot opens.</div>`
+        : `<button class="btn primary big" data-go="waitlist">Join the waitlist</button>`}`;
+  }
+  if (step === 'welcome') {
+    return `<h2>Hi${me.user?.name ? ' ' + esc(me.user.name.split(' ')[0]) : ''} 👋</h2>
+      <p class="lead">Kith turns your Telegram into a memory for your Even Realities G2 glasses.</p>
+      <div class="card">
+        <div class="feature"><div class="icon">👋</div><div><b>Know who's in front of you</b><span>They say their name, your glasses show your history with them.</span></div></div>
+        <div class="feature"><div class="icon">🤝</div><div><b>Never drop a promise</b><span>Promises from chats, and ones you say out loud, get real deadlines.</span></div></div>
+        <div class="feature"><div class="icon">⚡️</div><div><b>Deliver in one tap</b><span>Kith drafts the message. You check it and tap send.</span></div></div>
+      </div>
+      <div class="card">
+        <div class="feature"><div class="icon">🔒</div><div><b>You stay in control</b><span>Kith reads only the chats you pick. Nothing is sent without your tap. Test mode is on until you turn it off. Delete everything any time.</span></div></div>
+      </div>
+      <div class="card">${bar}</div>
+      <button class="btn primary big" data-go="phone">Connect my Telegram</button>
+      <p class="meta" style="text-align:center">Free beta · <a href="https://github.com/Rampop01/kith" target="_blank">Open source</a></p>`;
+  }
+  const steps = (n) => `<div class="steps">${[1, 2, 3].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div>`;
+  if (step === 'phone') {
+    return steps(1) + `<h2>Your phone number</h2>
+      <p class="lead">The one your Telegram uses. Telegram will send you a login code, just like signing in on a new device.</p>
+      <input class="field" type="tel" id="phone" placeholder="+234 801 234 5678" value="${esc(phone)}" autocomplete="tel">
+      <div class="err" id="err"></div>
+      <button class="btn primary big" data-go="send-code">Send code</button>
+      <div class="note" style="margin-top:14px">🔐 Kith keeps your Telegram login encrypted and uses it only to read the chats you pick and to send messages you approve. You can disconnect in one tap, which also logs Kith out of your Telegram.</div>
+      <button class="btn link" data-go="welcome">Back</button>`;
+  }
+  if (step === 'code') {
+    return steps(2) + `<h2>Enter the code</h2>
+      <p class="lead">Telegram just sent a login code to your Telegram app (a message from “Telegram”). Type it here.</p>
+      <input class="field code" type="text" inputmode="numeric" id="code" maxlength="6" placeholder="•••••" autocomplete="one-time-code">
+      <div class="err" id="err"></div>
+      <button class="btn primary big" data-go="check-code">Connect</button>
+      <div class="warn" style="margin-top:14px">⚠️ Only type this code here, inside Kith. Never send it to anyone in a chat. Telegram blocks codes that are forwarded.</div>
+      <button class="btn link" data-go="phone">Send a new code</button>`;
+  }
+  if (step === 'password') {
+    return steps(3) + `<h2>Two-step password</h2>
+      <p class="lead">Your Telegram has two-step verification on (good!). Enter that password to finish.</p>
+      <input class="field" type="password" id="pw" placeholder="Password" autocomplete="current-password">
+      <div class="err" id="err"></div>
+      <button class="btn primary big" data-go="check-pw">Connect</button>`;
+  }
+  return '';
 }
 
+async function onboardingAction(go) {
+  const err = (m) => { const e = $('#err'); if (e) e.textContent = m; };
+  const busy = (on) => document.querySelectorAll('[data-go]').forEach((b) => (b.disabled = on));
+  try {
+    if (go === 'waitlist') { const r = await api('/api/mini/waitlist', {}); me.beta.waitlisted = true; success(); toast(`You're #${r.position} on the waitlist`); return render(); }
+    if (go === 'welcome' || go === 'phone') { step = go; render(); return (go === 'phone') && setTimeout(() => $('#phone')?.focus(), 50); }
+    busy(true);
+    if (go === 'send-code') {
+      phone = $('#phone').value.trim();
+      await api('/api/mini/login/phone', { phone });
+      step = 'code'; render(); setTimeout(() => $('#code')?.focus(), 50);
+    }
+    if (go === 'check-code' || go === 'check-pw') {
+      const r = go === 'check-code'
+        ? await api('/api/mini/login/code', { code: $('#code').value, tz: TZ })
+        : await api('/api/mini/login/password', { password: $('#pw').value, tz: TZ });
+      if (r.needPassword) { step = 'password'; render(); return setTimeout(() => $('#pw')?.focus(), 50); }
+      success();
+      me.connected = true; state = r.state; tab = 'chats'; chosen = [];
+      render();
+      toast('Connected! Now pick the people Kith should remember.');
+    }
+  } catch (e) { err(e.message); haptic('heavy'); }
+  finally { busy(false); }
+}
+
+// ================= promises =================
+const dueChip = (p) => !p.due ? `<span class="chip none">no date</span>` : `<span class="chip ${p.overdue ? 'late' : ''}">${esc(p.due)}</span>`;
 function promiseCard(p, kept = false) {
   return `<div class="card ${open === p.id ? 'open' : ''} ${kept ? 'done' : ''}" data-open="${p.id}">
     <div class="row">
       <div class="avatar">${esc(initials(p.personName))}</div>
-      <div class="grow"><div class="name">${esc(p.personName)}</div><div class="what">${esc(p.what)}</div></div>
+      <div class="grow"><div class="name">${esc(p.personName)}${p.spoken ? ' · said in person 🎙' : ''}</div><div class="what">${esc(p.what)}</div></div>
       ${kept ? '<span class="chip">kept</span>' : dueChip(p)}
     </div>
     ${p.deliverText && !kept ? `<div class="meta">Draft: “${esc(p.deliverText)}”</div>` : ''}
@@ -183,11 +288,11 @@ function promiseCard(p, kept = false) {
     </div>
   </div>`;
 }
-
 function promisesView() {
+  if (!state.chats.some((c) => c.chosen)) return `<div class="card empty">Pick some chats first.<br><br><button class="btn primary" data-tab-go="chats">Choose chats</button></div>`;
   const late = state.owed.filter((p) => p.overdue), soon = state.owed.filter((p) => !p.overdue && p.due), nodate = state.owed.filter((p) => !p.due);
   let h = '';
-  if (!state.owed.length) h += `<div class="card empty">✨ You owe nobody anything. Promises kept!</div>`;
+  if (!state.owed.length && !state.indexing) h += `<div class="card empty">✨ You owe nobody anything. Promises kept!</div>`;
   if (late.length) h += `<h3>Overdue</h3>` + late.map((p) => promiseCard(p)).join('');
   if (soon.length) h += `<h3>Coming up</h3>` + soon.map((p) => promiseCard(p)).join('');
   if (nodate.length) h += `<h3>No date</h3>` + nodate.map((p) => promiseCard(p)).join('');
@@ -198,6 +303,7 @@ function promisesView() {
   return h;
 }
 
+// ================= people =================
 function peopleView() {
   const q = query.toLowerCase();
   const list = state.people.filter((p) => !q || p.name.toLowerCase().includes(q) || (p.org ?? '').toLowerCase().includes(q));
@@ -213,51 +319,101 @@ function peopleView() {
         ${p.theyOwe ? `<div><span>They owe you:</span> ${esc(p.theyOwe)}</div>` : ''}
         ${p.theyAsked ? `<div><span>They asked:</span> ${esc(p.theyAsked)}</div>` : ''}
       </div>
-    </div>`).join('') : `<div class="empty">No one yet. Choose chats in the Chats tab.</div>`);
+    </div>`).join('') : `<div class="empty">${state.indexing ? 'Reading chats…' : 'No one yet. Pick chats in the Chats tab.'}</div>`);
 }
 
+// ================= chats =================
 function chatsView() {
   const sel = chosen ?? state.chats.filter((c) => c.chosen).map((c) => c.id);
-  return `<div class="note">🔒 Kith only reads the chats you switch on. Switching one off makes Kith forget what it learned from it.${state.demo ? '<br><b>Demo mode:</b> only demo chats are shown.' : ''}</div>
-    <button class="btn" data-act="refresh" style="margin-bottom:12px">↻ Re-read chats now</button>` +
-    state.chats.map((c) => `
+  const max = state.me.maxChats;
+  return `<div class="note">🔒 Kith reads <b>only</b> the chats you switch on (up to ${max} in the beta). Switching one off makes Kith forget what it learned from it.${state.demo ? '<br><b>Demo mode:</b> only demo chats are shown.' : ''}</div>
+    <div class="row" style="margin-bottom:12px"><div class="grow meta" style="margin:0 4px">${sel.length} of ${max} chosen</div>
+    <button class="btn" data-act="refresh">↻ Re-read now</button></div>` +
+    (state.chats.length ? state.chats.map((c) => `
     <label class="card row" style="cursor:pointer">
       <div class="avatar">${esc(initials(c.name))}</div>
       <div class="grow"><div class="what">${esc(c.name)}</div><div class="name">Last message ${esc(c.lastChat)}${c.read ? ' · read by Kith' : ''}</div></div>
       <span class="switch"><input type="checkbox" data-chat="${c.id}" ${sel.includes(c.id) ? 'checked' : ''}><i></i></span>
-    </label>`).join('');
+    </label>`).join('') : `<div class="empty"><span class="spin"></span> Loading your chats…</div>`);
 }
 
-// ---------- events ----------
+// ================= you / settings =================
+function youView() {
+  const s = state.me;
+  const hours = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === s.digestHour ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('');
+  return `
+    <h3>Glasses</h3>
+    <div class="card">
+      <div class="row"><div class="icon">👓</div><div class="grow"><b>Pair your G2</b><div class="meta" style="margin:0">Open Kith on your glasses. Type the 6-digit code it shows.</div></div></div>
+      <div class="row" style="margin-top:12px"><input type="text" inputmode="numeric" maxlength="6" id="paircode" placeholder="123456" style="flex:1;letter-spacing:4px;font-weight:700">
+      <button class="btn primary" data-act="pair">Pair</button></div>
+    </div>
+    <h3>Sending</h3>
+    <label class="card row" style="cursor:pointer">
+      <div class="icon">✉️</div>
+      <div class="grow"><b>Send messages for real</b><div class="meta" style="margin:0">${s.sendMode === 'live' ? 'On: after you tap send on your glasses, the message goes to that person.' : 'Off (test mode): messages go to your own Saved Messages so you can try Kith safely.'}</div></div>
+      <span class="switch"><input type="checkbox" data-set="sendMode" ${s.sendMode === 'live' ? 'checked' : ''}><i></i></span>
+    </label>
+    <h3>Morning digest</h3>
+    <div class="card row">
+      <div class="icon">☀️</div>
+      <div class="grow"><b>Daily summary from the bot</b><div class="meta" style="margin:0">What you owe, with ✅ Done buttons. Time zone: ${esc(s.tz)}</div></div>
+      <select data-set="digestHour">${hours}</select>
+    </div>
+    <h3>Privacy</h3>
+    <div class="card">
+      <div class="meta" style="margin:0 0 10px">Kith stores: your encrypted Telegram login, the names of your recent chats, and what it found in the chats you chose (people, promises). Chat text is sent to our AI provider (Groq) to find promises and is not stored by Kith.</div>
+      <button class="btn danger" data-act="delete-all" style="width:100%">Disconnect & delete everything</button>
+    </div>
+    <p class="meta" style="text-align:center">Signed in as ${esc(s.name)} · Kith beta · <a href="https://github.com/Rampop01/kith" target="_blank">source</a></p>`;
+}
+
+// ================= events =================
 document.querySelector('nav').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  tab = b.dataset.tab; open = null; haptic(); render();
+  tab = b.dataset.tab; open = null; haptic(); render(); window.scrollTo(0, 0);
 });
 
 $('#main').addEventListener('input', (e) => {
   if (e.target.id === 'q') { query = e.target.value; const pos = e.target.selectionStart; render(); const q = $('#q'); q.focus(); q.setSelectionRange(pos, pos); }
 });
 
+$('#main').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const go = { phone: 'send-code', code: 'check-code', pw: 'check-pw' }[e.target.id];
+  if (go) onboardingAction(go);
+});
+
 $('#main').addEventListener('change', async (e) => {
   const t = e.target;
-  if (t.dataset.chat) {
-    const ids = new Set(chosen ?? state.chats.filter((c) => c.chosen).map((c) => c.id));
-    t.checked ? ids.add(t.dataset.chat) : ids.delete(t.dataset.chat);
-    chosen = [...ids]; haptic(); $('#savebar').classList.add('show');
-  }
-  if (t.dataset.act === 'date') {
-    state = await api(`/api/mini/promise/${t.dataset.id}`, { dueISO: t.value });
-    toast('Date updated'); render();
-  }
+  try {
+    if (t.dataset.chat) {
+      const ids = new Set(chosen ?? state.chats.filter((c) => c.chosen).map((c) => c.id));
+      if (t.checked && ids.size >= state.me.maxChats) { t.checked = false; return toast(`Up to ${state.me.maxChats} chats in the beta`); }
+      t.checked ? ids.add(t.dataset.chat) : ids.delete(t.dataset.chat);
+      chosen = [...ids]; haptic(); $('#savebar').classList.add('show');
+      const m = document.querySelector('.row .meta'); if (m) m.textContent = `${chosen.length} of ${state.me.maxChats} chosen`;
+    }
+    if (t.dataset.act === 'date') { state = await api(`/api/mini/promise/${t.dataset.id}`, { dueISO: t.value }); toast('Date updated'); render(); }
+    if (t.dataset.set === 'sendMode') {
+      if (t.checked && !(await confirmBox('Send real messages? After you tap send on your glasses, the message goes to that person on Telegram.'))) { t.checked = false; return; }
+      state = await api('/api/mini/settings', { sendMode: t.checked ? 'live' : 'saved' }); toast(t.checked ? 'Real sending on' : 'Test mode on'); render();
+    }
+    if (t.dataset.set === 'digestHour') { state = await api('/api/mini/settings', { digestHour: Number(t.value), tz: TZ }); toast('Digest time saved'); render(); }
+  } catch (err) { toast(err.message); }
 });
 
 $('#main').addEventListener('click', async (e) => {
+  const go = e.target.closest('[data-go]');
+  if (go) return onboardingAction(go.dataset.go);
+  const tabGo = e.target.closest('[data-tab-go]');
+  if (tabGo) { tab = tabGo.dataset.tabGo; return render(); }
   const b = e.target.closest('[data-act]');
   if (b && b.tagName === 'BUTTON') {
     e.stopPropagation();
     const id = b.dataset.id;
     try {
-      if (b.dataset.act === 'done') { haptic('medium'); state = await api(`/api/mini/promise/${id}`, { done: true }); open = null; toast('Promise kept ✅'); try { tg?.HapticFeedback.notificationOccurred('success'); } catch {} }
+      if (b.dataset.act === 'done') { haptic('medium'); state = await api(`/api/mini/promise/${id}`, { done: true }); open = null; toast('Promise kept ✅'); success(); }
       if (b.dataset.act === 'undo') { state = await api(`/api/mini/promise/${id}`, { done: false }); toast('Back on your list'); }
       if (b.dataset.act === 'delete') { state = await api(`/api/mini/promise/${id}`, { delete: true }); open = null; toast('Removed'); }
       if (b.dataset.act === 'edit') {
@@ -265,12 +421,21 @@ $('#main').addEventListener('click', async (e) => {
         const v = prompt('What do you owe?', p?.what ?? '');
         if (v && v.trim()) { state = await api(`/api/mini/promise/${id}`, { what: v }); toast('Saved'); }
       }
-      if (b.dataset.act === 'refresh') { state = await api('/api/mini/refresh', {}); toast('Reading chats…'); setTimeout(load, 3000); }
+      if (b.dataset.act === 'refresh') { state = await api('/api/mini/refresh', {}); toast('Reading chats…'); poll(); }
+      if (b.dataset.act === 'pair') {
+        await api('/api/mini/pair', { code: $('#paircode').value });
+        success(); toast('Glasses paired 👓'); $('#paircode').value = '';
+      }
+      if (b.dataset.act === 'delete-all') {
+        if (!(await confirmBox('Disconnect Kith and delete everything it knows? This also logs Kith out of your Telegram.'))) return;
+        await api('/api/mini/delete', {});
+        toast('Everything deleted'); me = await api('/api/mini/me'); state = null; step = 'welcome'; render(); return;
+      }
       render();
     } catch (err) { toast(err.message); }
     return;
   }
-  if (e.target.closest('input')) return;
+  if (e.target.closest('input, select, a, label')) return;
   const c = e.target.closest('[data-open]');
   if (c) { open = open === c.dataset.open ? null : c.dataset.open; haptic(); render(); }
 });
@@ -278,13 +443,12 @@ $('#main').addEventListener('click', async (e) => {
 $('#save').addEventListener('click', async () => {
   try {
     state = await api('/api/mini/chats', { ids: chosen });
-    chosen = null; toast('Saved. Kith is reading your chats…');
-    try { tg?.HapticFeedback.notificationOccurred('success'); } catch {}
-    render(); setTimeout(load, 3000);
+    chosen = null; success(); toast('Saved. Kith is reading those chats…');
+    tab = 'promises'; render(); poll();
   } catch (err) { toast(err.message); }
 });
 
-load();
+boot();
 </script>
 </body>
 </html>

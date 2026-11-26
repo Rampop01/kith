@@ -11,7 +11,7 @@
     "tg:login": "node --env-file=.env server/tg-login.ts",
     "tg:login:qr": "node --env-file=.env server/tg-login-qr.ts",
     "server": "node --env-file=.env server/index.ts",
-    "server:demo": "KITH_CACHE=demo KITH_SEND_MODE=live node --env-file=.env server/index.ts",
+    "server:demo": "KITH_CACHE=dev node --env-file=.env server/index.ts",
     "tunnel": "node server/tunnel.ts"
   },
   "keywords": [],
@@ -22,11 +22,13 @@
     "@evenrealities/evenhub-cli": "^0.2.0",
     "@evenrealities/evenhub-simulator": "^0.9.5",
     "@types/node": "^26.6.10",
+    "@types/pg": "^8.23.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.16",
+    "pg": "^8.23.1",
     "qrcode-terminal": "^0.12.0",
     "telegram": "^2.26.22"
   }

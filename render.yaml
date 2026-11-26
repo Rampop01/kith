@@ -1,0 +1,29 @@
+# One-click deploy on Render (free plan). Secrets are entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: kith
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --omit=dev
+    startCommand: node server/index.ts
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: KITH_SECRET          # encrypts Telegram logins at rest
+        generateValue: true
+      - key: DATABASE_URL         # Postgres (e.g. Neon free plan)
+        sync: false
+      - key: TELEGRAM_API_ID
+        sync: false
+      - key: TELEGRAM_API_HASH
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: KITH_ADMIN_ID        # your Telegram user id: signup alerts
+        sync: false
+      - key: KITH_BETA_MAX
+        value: "20"

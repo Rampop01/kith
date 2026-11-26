@@ -10,7 +10,7 @@ import {
   AudioInputSource,
   type EvenAppBridge,
 } from '@evenrealities/even_hub_sdk';
-import { api, type Person, type Home } from './api';
+import { api, setToken, type Person, type Home } from './api';
 
 // G2 display: 576 x 288, monochrome. One container captures input.
 // Gestures: tap = select / confirm, double tap = back, hold = listen for a name.
@@ -22,7 +22,8 @@ type Screen =
   | { kind: 'confirm'; person: Person; text: string; promiseId?: string }
   | { kind: 'listening' }
   | { kind: 'catching'; person: Person; caught: string[]; heard: string }
-  | { kind: 'message'; text: string; then?: () => void };
+  | { kind: 'message'; text: string; then?: () => void }
+  | { kind: 'pairing' };
 
 const W = 576, H = 288;
 const HEADER = { containerID: 1, containerName: 'header' };
@@ -85,6 +86,7 @@ async function load<T>(label: string, fn: () => Promise<T>): Promise<T | undefin
   try { return await fn(); }
   catch (e: any) {
     busy = false;
+    if (e.status === 401) { await forgetPairing(); return; }
     await show({ kind: 'message', text: `Couldn't reach Kith.\n${clip(e.message ?? String(e), 80)}\n\nTap: home` });
   } finally { busy = false; }
 }
@@ -160,6 +162,8 @@ async function show(next: Screen) {
     }
     case 'message':
       return textPage(next.text);
+    case 'pairing':
+      return; // drawn by pair()
   }
 }
 
@@ -184,7 +188,7 @@ async function tap(listIndex?: number) {
       const s = screen;
       const r = await load('Sending...', () => api.send(s.person.id, s.text, s.promiseId));
       if (!r) return;
-      const where = r.mode === 'live' ? `to ${firstName(s.person.name)}` : 'to Saved Messages (test mode)';
+      const where = r.mode === 'live' ? `to ${firstName(s.person.name)}` : 'to your Saved Messages\n(test mode: turn on real sending\nin Kith > You)';
       await show({ kind: 'message', text: `SENT ${where}\n\n${s.promiseId ? 'Promise kept.' : ''}` });
       setTimeout(() => { if (screen.kind === 'message') goHome(); }, 1800);
     }
@@ -256,6 +260,40 @@ function takeAudio() {
   return pcm;
 }
 
+// ---------- pairing (first launch) ----------
+const TOKEN_KEY = 'kith_token';
+
+async function pair() {
+  screen = { kind: 'pairing' };
+  let r;
+  try { r = await api.pairStart(); }
+  catch { await textPage("KITH\n\nCan't reach Kith.\nCheck your phone's internet.\n\nRetrying..."); setTimeout(pair, 5000); return; }
+  await textPage(`PAIR YOUR GLASSES\n\n1. Open @${r.bot || 'kith_memory_bot'} in Telegram\n2. Tap Kith, then the You tab\n3. Enter this code:\n\n        ${r.code.slice(0, 3)} ${r.code.slice(3)}`);
+  const started = Date.now();
+  const tick = async () => {
+    if (screen.kind !== 'pairing') return;
+    if (Date.now() - started > 9.5 * 60_000) return pair(); // code expired: new one
+    try {
+      const s = await api.pairStatus(r.pairId);
+      if (s.token) {
+        setToken(s.token);
+        await bridge.setLocalStorage(TOKEN_KEY, s.token);
+        await textPage('PAIRED\n\nKith is ready.');
+        setTimeout(goHome, 1200);
+        return;
+      }
+    } catch {}
+    setTimeout(tick, 2000);
+  };
+  tick();
+}
+
+async function forgetPairing() {
+  setToken('');
+  await bridge.setLocalStorage(TOKEN_KEY, '');
+  return pair();
+}
+
 // ---------- input ----------
 
 function onEvent(event: any) {
@@ -266,6 +304,7 @@ function onEvent(event: any) {
   const ev = event.listEvent ?? event.textEvent ?? event.sysEvent;
   if (!ev) return;
   if (busy && screen.kind !== 'catching') return;
+  if (screen.kind === 'pairing') return;
   // CLICK_EVENT is 0 and protobuf omits zero values, so missing type = click.
   const type: OsEventTypeList = ev.eventType ?? OsEventTypeList.CLICK_EVENT;
   switch (type) {
@@ -285,6 +324,9 @@ function onEvent(event: any) {
 async function main() {
   bridge = await waitForEvenAppBridge();
   bridge.onEvenHubEvent(onEvent);
+  const saved = await bridge.getLocalStorage(TOKEN_KEY).catch(() => '');
+  if (!saved) return pair();
+  setToken(saved);
   await goHome();
 }
 

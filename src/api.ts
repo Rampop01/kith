@@ -5,14 +5,21 @@ export type Promise_ = { id: string; personId: string; what: string; due: string
 export type Person = { id: string; name: string; org: string; lastChat: string; theyAsked: string; theyOwe: string; note?: string; promises: Promise_[] };
 export type Home = { owed: Promise_[]; people: number; indexing: boolean; sendMode: 'saved' | 'live' };
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(SERVER + path, init);
+let token = ''; // device token from pairing
+export const setToken = (t: string) => { token = t; };
+
+async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = { ...(init.headers as any) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const r = await fetch(SERVER + path, { ...init, headers });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(body.error ?? `HTTP ${r.status}`), { status: r.status });
   return body as T;
 }
 
 export const api = {
+  pairStart: () => call<{ pairId: string; code: string; bot: string }>('/api/pair/start', { method: 'POST' }),
+  pairStatus: (pairId: string) => call<{ token: string | null }>(`/api/pair/status?pairId=${pairId}`),
   home: () => call<Home>('/api/home'),
   person: (id: string) => call<Person>(`/api/person/${id}`),
   find: (q: string) => call<Person>(`/api/find?q=${encodeURIComponent(q)}`),
