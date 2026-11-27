@@ -2,7 +2,7 @@
   "package_id": "com.kithapp.kith",
   "edition": "202601",
   "name": "Kith",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "min_app_version": "2.2.10",
   "min_sdk_version": "0.0.16",
   "entrypoint": "index.html",
@@ -10,12 +10,17 @@
     {
       "name": "network",
       "desc": "Kith talks to its own server to look up people and promises from your Telegram.",
-      "whitelist": ["http://localhost:8787"]
+      "whitelist": [
+        "https://kith-tcf8.onrender.com",
+        "http://localhost:8787"
+      ]
     },
     {
       "name": "g2-microphone",
-      "desc": "Kith listens only when you tap, to hear the name of the person you are meeting."
+      "desc": "Kith listens only while you hold the touchpad or choose Listen: to hear names, notes and promises. Audio is never stored."
     }
   ],
-  "supported_languages": ["en"]
+  "supported_languages": [
+    "en"
+  ]
 }
