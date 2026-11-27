@@ -59,7 +59,8 @@
   .chip.late { background: #ffe5e9; color: #d63a50; }
   .chip.none { background: #eef3f8; color: #7f93a8; }
   .actions { display: none; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .open .actions { display: flex; }
+  .open .actions, .actions.show { display: flex; }
+  .card input:not([type]) { min-width: 0; font: inherit; font-size: 15px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
   .btn { border: 0; font: inherit; font-weight: 600; font-size: 14px; padding: 9px 12px; border-radius: 12px; cursor: pointer; background: #e9f4ff; color: #1f74d1; }
   .btn.primary { background: linear-gradient(135deg, var(--sky), var(--sky2)); color: #fff; box-shadow: 0 4px 12px rgba(58,160,255,.35); }
   .btn.big { width: 100%; padding: 15px; font-size: 16px; border-radius: 16px; }
@@ -304,10 +305,38 @@ function promisesView() {
 }
 
 // ================= people =================
+function metCard(p) {
+  const tgc = p.tgCandidate;
+  const owe = p.promises.map((x) => `<div><span>You promised:</span> ${esc(x.what)}${x.due ? ` (${esc(x.due)})` : ''}</div>`).join('');
+  let connect = '';
+  if (p.connected) connect = `<div class="meta" style="margin:8px 0 0">✅ Connected on Telegram${p.username ? ` (@${esc(p.username)})` : ''}</div>
+    <div class="actions show"><button class="btn primary" data-act="met-hello" data-id="${p.id}">👋 Send a hello</button><button class="btn" data-act="met-forget" data-id="${p.id}">Forget meeting</button></div>`;
+  else connect = `
+    ${tgc ? `<div class="note" style="margin:10px 0 0">Telegram found <b>@${esc(tgc.username)}</b> (“${esc(tgc.name)}”). Is this ${esc(p.name.split(' ')[0])}?</div>
+      <div class="actions show"><button class="btn primary" data-act="met-connect" data-id="${p.id}">Yes, connect</button></div>` : ''}
+    ${p.suggest?.length ? `<div class="meta" style="margin:10px 0 4px">Maybe already in your chats:</div><div class="actions show">${p.suggest.map((x) =>
+      `<button class="btn" data-act="met-link" data-id="${p.id}" data-target="${x.id}">Link to ${esc(x.name)}</button>`).join('')}</div>` : ''}
+    <div class="row" style="margin-top:10px;gap:8px"><input class="grow" id="tg-${p.id}" placeholder="${tgc ? 'Wrong person? Type' : 'Their Telegram'} @username" autocapitalize="off" autocomplete="off">
+      <button class="btn" data-act="met-username" data-id="${p.id}">Find</button></div>
+    <div class="actions show"><button class="btn" data-act="met-forget" data-id="${p.id}">Forget</button></div>`;
+  return `<div class="card">
+    <div class="row"><div class="avatar">${esc(initials(p.name))}</div>
+      <div class="grow"><div class="what">${esc(p.name)}</div><div class="name">${esc(p.org || 'Met in person')}</div></div>
+      <span class="chip">${esc(p.lastChat)}</span></div>
+    <div class="kv">${(p.notes ?? []).map((n) => `<div><span>💬</span> ${esc(n)}</div>`).join('')}${owe}</div>${connect}</div>`;
+}
+
 function peopleView() {
+  const met = (state.met ?? []).filter((p) => !query || p.name.toLowerCase().includes(query.toLowerCase()));
+  const metHtml = met.length ? `<h3>People you met</h3>` + met.map(metCard).join('') + `<h3>From your chats</h3>`
+    : `<div class="note">👓 <b>Meeting someone new?</b> Hold the touchpad on your glasses while they say their name. Kith remembers them here, even without a chat.</div>`;
+  return peopleList(metHtml);
+}
+
+function peopleList(metHtml) {
   const q = query.toLowerCase();
   const list = state.people.filter((p) => !q || p.name.toLowerCase().includes(q) || (p.org ?? '').toLowerCase().includes(q));
-  return `<input type="search" id="q" placeholder="Search people" value="${esc(query)}">` + (list.length ? list.map((p) => `
+  return `<input type="search" id="q" placeholder="Search people" value="${esc(query)}">` + metHtml + (list.length ? list.map((p) => `
     <div class="card">
       <div class="row"><div class="avatar">${esc(initials(p.name))}</div>
         <div class="grow"><div class="what">${esc(p.name)}</div><div class="name">${esc(p.org || 'Telegram contact')}</div></div>
@@ -420,6 +449,23 @@ $('#main').addEventListener('click', async (e) => {
         const p = state.owed.find((x) => x.id === id);
         const v = prompt('What do you owe?', p?.what ?? '');
         if (v && v.trim()) { state = await api(`/api/mini/promise/${id}`, { what: v }); toast('Saved'); }
+      }
+      if (b.dataset.act === 'met-username') {
+        const v = $(`#tg-${id}`).value.trim();
+        if (!v) return toast('Type their @username');
+        state = await api(`/api/mini/met/${id}`, { action: 'username', username: v }); toast('Found on Telegram. Check it is them.');
+      }
+      if (b.dataset.act === 'met-connect') { state = await api(`/api/mini/met/${id}`, { action: 'connect' }); success(); toast('Connected 🤝'); }
+      if (b.dataset.act === 'met-link') { state = await api(`/api/mini/met/${id}`, { action: 'connect', targetId: b.dataset.target }); success(); toast('Linked to your chat'); }
+      if (b.dataset.act === 'met-hello') {
+        const p = state.met.find((x) => x.id === id);
+        if (!(await confirmBox(`Send ${p?.name.split(' ')[0] ?? 'them'} a hello on Telegram?`))) return;
+        const r = await api(`/api/mini/met/${id}`, { action: 'hello' }); state = r;
+        toast(r.sent === 'live' ? 'Sent 👋' : 'Test mode: sent to your Saved Messages'); success();
+      }
+      if (b.dataset.act === 'met-forget') {
+        if (!(await confirmBox('Forget this meeting? Notes and promises from it are deleted.'))) return;
+        state = await api(`/api/mini/met/${id}`, { action: 'forget' }); toast('Forgotten');
       }
       if (b.dataset.act === 'refresh') { state = await api('/api/mini/refresh', {}); toast('Reading chats…'); poll(); }
       if (b.dataset.act === 'pair') {

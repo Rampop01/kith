@@ -9,12 +9,13 @@ Kith is an app for Even Realities G2 smart glasses (Track 01: Messaging). It rea
 | Feature | How it works |
 |---|---|
 | **Person card** | Hold the touchpad while someone says their name ("Hi, I'm Bimbim"). Kith matches the name to your Telegram chats and shows: who they are, what you last talked about, what you owe them, what they owe you, and what they asked you. |
+| **Meet new people** | At an event, someone you've never chatted with says "Hi, I'm Ada, building payments at Paystack". Kith shows **NEW: ADA / Paystack**, then listens (when you choose) for notes, promises, and their Telegram @username. Telegram shows its real name for that username so you can confirm it's them; one tap drafts a hello. Not swapped usernames? The Mini App suggests matching chats later. At 8 pm the bot recaps "You met 4 new people today" with follow-ups. |
 | **What you owe** | The home screen lists the promises found in your chats ("send pitch deck, Fri", "send spreadsheet, 2d overdue"), soonest first. |
 | **They owe you** | Kith also tracks what other people promised you. |
 | **Promise catcher** | During a face-to-face conversation, choose "Catch promises". Kith listens through the glasses mic and catches commitments you say out loud ("I'll send you the deck by Friday"). They are saved with a real date, and a recap arrives in Telegram. |
 | **One-tap deliver** | Choose a promise, check the drafted message, tap to send it to that person on Telegram. The promise is marked kept. |
 | **Telegram Mini App** | Tap **Kith** in the bot's chat. A light-blue home base on your phone: everything you owe (overdue first), what people owe you, and person cards. Mark promises done, change dates, fix or remove anything the AI got wrong. **Chats tab:** choose exactly which chats Kith may read; switching one off makes Kith forget what it learned from it. |
-| **Telegram bot** | `@kith_memory_bot` sends a morning digest of what you owe, with ✅ Done buttons. `/today` gets it any time. The bot only answers its owner. |
+| **Telegram bot** | `@kith_memory_bot` sends a morning digest of what you owe, with ✅ Done buttons. `/today` gets it any time. Each user only ever sees their own data. |
 
 ### Glasses controls
 
@@ -43,12 +44,13 @@ Kith server (server/index.ts, Node)
 ## Safety and privacy
 
 - **Nothing is sent without a tap**, and you see the exact message first.
-- **Safe by default:** in normal mode, "sending" goes to your own Saved Messages. Real sending needs `KITH_SEND_MODE=live`.
+- **Safe by default:** new users start in test mode: "sending" goes to their own Saved Messages until they switch on real sending in the Mini App (You tab), with a confirmation.
 - **Demo mode** (`KITH_DEMO_IDS`) shows only the chats you list, and refuses to send to anyone else. We filmed the demo this way, so no real contacts appear.
 - **No camera, no face recognition.** People are recognised by the name they say.
-- The bot ignores everyone except the owner.
-- **Mini App security:** every request carries Telegram's signed `initData`. The server checks the signature with the bot token and only accepts the owner's Telegram ID. Through the public tunnel, only `/mini` and `/api/mini/*` respond; the glasses API is local-only.
+- **Separate users:** each person connects their own Telegram in the Mini App. Glasses pair to one user with a 6-digit code. Logins are encrypted at rest (AES-256-GCM); "Disconnect & delete everything" logs Kith out of Telegram and erases the user's data.
+- **Mini App security:** every request carries Telegram's signed `initData`. The server checks the signature with the bot token, so a user can only reach their own account. The glasses API needs the device token from pairing.
 - **You choose the chats.** Kith reads only the chats switched on in the Mini App.
+- **Meeting strangers, with consent:** Kith only listens while you hold the touchpad or choose "Listen", and it keeps short text notes, never audio. Recording laws differ by country: tell people you're taking notes. A username is only connected after you confirm the name Telegram shows, and "Forget them" deletes a meeting.
 - Chat text and audio are sent to Groq for AI processing. Sessions and keys stay on your machine (`.env`, `.tg-session`, `.bot-session`, all gitignored).
 
 ## Run it

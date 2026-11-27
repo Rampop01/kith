@@ -20,6 +20,7 @@ type Screen =
   | { kind: 'person'; person: Person }
   | { kind: 'actions'; person: Person }
   | { kind: 'confirm'; person: Person; text: string; promiseId?: string }
+  | { kind: 'connect'; person: Person }
   | { kind: 'listening' }
   | { kind: 'catching'; person: Person; caught: string[]; heard: string }
   | { kind: 'message'; text: string; then?: () => void }
@@ -118,6 +119,19 @@ async function show(next: Screen) {
     }
     case 'person': {
       const p = next.person;
+      if (p.met && !p.connected) { // someone new, met in person
+        const owe = p.promises[0], tg = p.tgCandidate;
+        const lines = [
+          `NEW: ${p.name.toUpperCase()}${p.org ? '  /  ' + p.org : ''}`,
+          '',
+          `Met ${p.lastChat.replace(/^met /, '')}${p.notes?.length ? ': ' + clip(p.notes[p.notes.length - 1], 40) : ''}`,
+          owe ? `YOU OWE: ${owe.what}${owe.due ? ` (${owe.due})` : ''}` : '',
+          tg ? `Telegram: @${tg.username} (${clip(tg.name, 20)})` : 'Not on Telegram with you yet',
+          '',
+          'Tap: remember & connect    Double tap: home',
+        ].filter((l, i, a) => l !== '' || a[i - 1] !== '');
+        return textPage(lines.join('\n'));
+      }
       const owe = p.promises[0];
       const lines = [
         `${p.name.toUpperCase()}${p.org ? '  /  ' + p.org : ''}`,
@@ -134,6 +148,13 @@ async function show(next: Screen) {
     }
     case 'actions': {
       const p = next.person;
+      if (p.met && !p.connected) {
+        const rows = [{ label: 'Listen: notes, promises, @username', run: () => startCatching(p) }];
+        if (p.tgCandidate) rows.unshift({ label: `Connect @${p.tgCandidate.username} & say hi`, run: () => show({ kind: 'connect', person: p }) });
+        rows.push({ label: 'Forget them', run: () => forgetMet(p) });
+        rows.push({ label: 'Back', run: () => show({ kind: 'person', person: p }) });
+        return listPage(`${firstName(p.name)} (new): what now?`, rows);
+      }
       const rows: { label: string; run: () => void }[] = p.promises.slice(0, 2).map((owe) => ({
         label: `Deliver: ${owe.what}`,
         run: () => show({ kind: 'confirm', person: p, text: owe.deliverText, promiseId: owe.id }),
@@ -143,15 +164,20 @@ async function show(next: Screen) {
       rows.push({ label: 'Back', run: () => show({ kind: 'person', person: p }) });
       return listPage(`${firstName(p.name)}: what now?`, rows);
     }
+    case 'connect': {
+      const tg = next.person.tgCandidate!;
+      return textPage(`CONNECT ON TELEGRAM?\n\n@${tg.username}\nTelegram says: ${tg.name}\n\nIs this ${firstName(next.person.name)}?\nTap: yes, draft a hello    Double tap: no`);
+    }
     case 'confirm':
       return textPage(`SEND TO ${next.person.name.toUpperCase()}?\n\n"${next.text}"\n\nTap: send    Double tap: cancel`);
     case 'listening':
       return textPage('LISTENING...\n\nHold while they say their name.\nRelease when done.');
     case 'catching': {
+      const isNew = next.person.met && !next.person.connected;
       const lines = [
         `WITH ${next.person.name.toUpperCase()}   (listening)`,
         '',
-        next.caught.length ? `Promises caught: ${next.caught.length}` : 'Catching promises you make...',
+        next.caught.length ? `Promises caught: ${next.caught.length}` : isNew ? 'Noting what you talk about.\nAsk for their Telegram @username.' : 'Catching promises you make...',
         ...next.caught.slice(-3).map((c) => `+ ${c}`),
         '',
         next.heard ? `"${clip(next.heard, 60)}"` : '',
@@ -171,7 +197,7 @@ function back() {
   switch (screen.kind) {
     case 'catching': return stopCatching();
     case 'person': case 'listening': case 'message': return goHome();
-    case 'actions': return show({ kind: 'person', person: screen.person });
+    case 'actions': case 'connect': return show({ kind: 'person', person: screen.person });
     case 'confirm': return show({ kind: 'actions', person: screen.person });
   }
 }
@@ -182,6 +208,12 @@ async function tap(listIndex?: number) {
       return listItems[listIndex ?? 0]?.();
     case 'person':
       return show({ kind: 'actions', person: screen.person });
+    case 'connect': {
+      const s = screen;
+      const r = await load('Connecting...', () => api.metConnect(s.person.id));
+      if (r) return show({ kind: 'confirm', person: r.person, text: r.text });
+      return;
+    }
     case 'message':
       return screen.then ? screen.then() : goHome();
     case 'confirm': {
@@ -214,7 +246,13 @@ async function stopListening() {
   if (!r) return;
   debug('heard: ' + r.text);
   if (r.person) return show({ kind: 'person', person: r.person });
-  return show({ kind: 'message', text: `New face.\nHeard: "${clip(r.text, 70)}"\n\nNo chat history yet.\nTap: home` });
+  if (r.met) return show({ kind: 'person', person: r.met });
+  return show({ kind: 'message', text: `Didn't catch a name.\nHeard: "${clip(r.text, 70)}"\n\nHold again while they say it.\nTap: home` });
+}
+
+async function forgetMet(p: Person) {
+  const r = await load('Forgetting...', () => api.metForget(p.id));
+  if (r) await show({ kind: 'message', text: `Forgot ${firstName(p.name)}.\n\nTap: home` });
 }
 
 // ---------- promise catcher ----------
@@ -247,9 +285,14 @@ async function stopCatching() {
   await bridge.audioControl(false);
   const r = await load('Saving...', () => api.catchEnd(catchSession));
   if (!r) return;
-  await show({ kind: 'message', text: r.count
-    ? `CAUGHT ${r.count} ${r.count === 1 ? 'PROMISE' : 'PROMISES'}\nto ${s.person.name}\n\nSaved. Recap sent to your Telegram.\nTap: home`
-    : `No promises heard.\n\nTap: home` });
+  const person = r.person ?? s.person;
+  const isNew = person.met && !person.connected;
+  const then = isNew ? () => show({ kind: 'person', person }) : undefined;
+  await show({ kind: 'message', then, text: (r.count
+    ? `CAUGHT ${r.count} ${r.count === 1 ? 'PROMISE' : 'PROMISES'}\nto ${s.person.name}\n\nSaved. Recap sent to your Telegram.`
+    : isNew ? `Saved notes on ${firstName(person.name)}.` : `No promises heard.`) +
+    (isNew && person.tgCandidate ? `\nFound @${person.tgCandidate.username} on Telegram.` : '') +
+    `\n\nTap: ${isNew ? 'continue' : 'home'}` });
 }
 
 function takeAudio() {

@@ -147,6 +147,19 @@ async function miniRoutes(req: IncomingMessage, res: ServerResponse, path: strin
     a.index().catch((e) => console.log(`[${a.id}] index failed: ${e.message}`));
     return reply(res, 200, { ...a.miniState(), indexing: true });
   }
+  const mm = path.match(/^\/api\/mini\/met\/([\w-]+)$/);
+  if (req.method === 'POST' && mm) {
+    const b = await json(req), p = a.store.people[mm[1]];
+    if (!p?.metAt) throw httpError(404, 'not found');
+    if (b.action === 'username') await a.setCandidate(p, String(b.username ?? ''));
+    else if (b.action === 'connect') a.connectMet(p.id, b.targetId ? String(b.targetId) : undefined);
+    else if (b.action === 'hello') {
+      const mode = await a.send(p.id, String(b.text || a.followUp(p)).slice(0, 1000));
+      return reply(res, 200, { ...a.miniState(), sent: mode });
+    }
+    else if (b.action === 'forget') a.forget(p.id);
+    return reply(res, 200, a.miniState());
+  }
   if (req.method === 'POST' && path === '/api/mini/settings') {
     const b = await json(req);
     if (b.sendMode === 'live' || b.sendMode === 'saved') a.rec.sendMode = b.sendMode;
@@ -202,7 +215,10 @@ async function glassesRoutes(req: IncomingMessage, res: ServerResponse, path: st
     if (pcm.length < 3200) return reply(res, 400, { error: 'too little audio' });
     const text = await a.hear(pcm);
     const p = a.findByName(text);
-    return reply(res, 200, { text, person: p ? await a.person(p.id) : null });
+    if (p) return reply(res, 200, { text, person: await a.person(p.id) });
+    // not in their chats: someone new. Remember who they said they are.
+    const met = text ? await a.meet(text).catch((e) => { console.log('meet failed:', e.message); return undefined; }) : undefined;
+    return reply(res, 200, { text, person: null, met: met ?? null });
   }
   if (req.method === 'POST' && path === '/api/catch') {
     const session = url.searchParams.get('session') ?? '', personId = url.searchParams.get('personId') ?? '';
@@ -216,7 +232,16 @@ async function glassesRoutes(req: IncomingMessage, res: ServerResponse, path: st
       const lines = r.caught.map((x, i) => `${i + 1}. ${x.what}${x.due ? ` <i>(${x.due})</i>` : ''}`).join('\n');
       bot.notify(a.id, `🎙 <b>You promised ${r.personName}</b> in person:\n\n${lines}\n\nSaved in Kith. I'll remind you.`).catch(() => {});
     }
-    return reply(res, 200, { count: r.count });
+    return reply(res, 200, { count: r.count, person: r.person ?? null });
+  }
+  if (req.method === 'POST' && path === '/api/met/connect') {
+    const id = a.connectMet(String((await json(req)).personId ?? ''));
+    const p = await a.person(id);
+    return reply(res, 200, { person: p, text: a.followUp(a.store.people[id]) });
+  }
+  if (req.method === 'POST' && path === '/api/met/forget') {
+    a.forget(String((await json(req)).personId ?? ''));
+    return reply(res, 200, { ok: true });
   }
   if (req.method === 'POST' && path === '/api/send') {
     const { personId, text, promiseId } = await json(req);

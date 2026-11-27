@@ -68,6 +68,14 @@ Return JSON only: { "promises": [ { "what": "max 5 words, e.g. send pitch deck",
   "deliverText": "short friendly message the user could later send to deliver it, max 25 words" } ] }
 Use [] if there is no clear commitment. Never invent.`;
 
+export const INTRO_PROMPT = `The user wears smart glasses and is meeting someone new in person. You get a short speech transcript.
+Pull out facts about the OTHER person. Return JSON only:
+{ "name": "their name as they said it, e.g. Ada Obi, else \"\"",
+  "org": "their company or role, max 4 words, else \"\"",
+  "topic": "what they work on or what you discussed, max 8 words, else \"\"",
+  "telegram": "a Telegram username they gave, written as a handle: \"at ada underscore builds\" -> \"ada_builds\", else \"\"" }
+Only use what is said. Never invent. If no one introduces themselves, name is "".`;
+
 /** Turn deadline words ("friday", "tomorrow", "dec 3") into YYYY-MM-DD, relative to when it was said. */
 export function resolveDue(words?: string, saidISO?: string): string {
   const w = (words ?? '').toLowerCase().trim();

@@ -51,6 +51,17 @@ export async function startBot(deps: Deps) {
     };
   };
 
+  const meetRecap = (a: Account, met: ReturnType<Account['metPeople']>) => {
+    const lines = met.slice(0, 10).map((p, i) => {
+      const owe = a.open().filter((x) => x.personId === p.id).map((x) => x.what);
+      return `${i + 1}. <b>${esc(p.name)}</b>${p.who ? `, ${esc(p.who)}` : ''}` +
+        (p.notes?.length ? `\n    💬 ${esc(p.notes[p.notes.length - 1])}` : '') +
+        (owe.length ? `\n    🤝 You promised: ${esc(owe.join(', '))}` : '') +
+        (p.id.startsWith('met-') ? (p.tgCandidate ? `\n    ✈️ @${esc(p.tgCandidate.username)}, tap to connect` : '\n    ✈️ Not on Telegram with you yet') : '\n    ✅ Connected');
+    });
+    return `🌙 <b>You met ${met.length} new ${met.length === 1 ? 'person' : 'people'} today</b>\n\n${lines.join('\n')}\n\nSay hi while it's fresh.`;
+  };
+
   const send = (userId: string, message: string, buttons?: any) =>
     bot.sendMessage(userId, { message, parseMode: 'html', buttons, linkPreview: false });
   const sendDigest = async (a: Account) => { const d = digest(a); await send(a.id, d.text, d.buttons); };
@@ -101,6 +112,11 @@ export async function startBot(deps: Deps) {
         const parts = new Intl.DateTimeFormat('en-CA', { timeZone: a.rec.tz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
         const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
         const day = `${get('year')}-${get('month')}-${get('day')}`, hour = Number(get('hour'));
+        if (hour === 20 && a.rec.lastMeetRecap !== day) { // evening: people met today, with follow-ups
+          a.rec.lastMeetRecap = day; await a.saveRec();
+          const met = a.metPeople().filter((p) => new Date(p.metAt!).toLocaleDateString('en-CA', { timeZone: a.rec.tz || 'UTC' }) === day);
+          if (met.length) await send(a.id, meetRecap(a, met), rows(appButton('👥 Follow up in Kith')));
+        }
         if (hour !== a.rec.digestHour || a.rec.lastDigest === day) continue;
         a.rec.lastDigest = day; await a.saveRec();
         await a.index().catch(() => {});
