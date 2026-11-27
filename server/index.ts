@@ -8,7 +8,7 @@ import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
 import { kv } from './db.ts';
 import { getAccount, saveLogin, connectedUserIds, userKey, API_ID, API_HASH, MAX_CHOSEN, type Account, type UserRec } from './account.ts';
-import { startLogin, submitCode, submitPassword } from './login.ts';
+import { startLogin, resendCode, submitCode, submitPassword } from './login.ts';
 import { startBot } from './bot.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -110,6 +110,7 @@ async function miniRoutes(req: IncomingMessage, res: ServerResponse, path: strin
     if (!a && (await betaInfo(u.id)).full) throw httpError(403, 'The beta is full. Join the waitlist.');
     return reply(res, 200, await startLogin(u.id, String((await json(req)).phone ?? '')));
   }
+  if (req.method === 'POST' && path === '/api/mini/login/resend') return reply(res, 200, await resendCode(u.id));
   if (req.method === 'POST' && (path === '/api/mini/login/code' || path === '/api/mini/login/password')) {
     const b = await json(req);
     const r = path.endsWith('code') ? await submitCode(u.id, String(b.code ?? ''), b.tz) : await submitPassword(u.id, String(b.password ?? ''), b.tz);

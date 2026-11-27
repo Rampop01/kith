@@ -133,7 +133,17 @@ const success = () => { try { tg?.HapticFeedback.notificationOccurred('success')
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 let me = null, state = null, tab = ['promises', 'people', 'chats', 'you'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'promises';
-let open = null, query = '', chosen = null, step = 'welcome', phone = '';
+let open = null, query = '', chosen = null, step = 'welcome', phone = '', sent = null;
+function codeWhere() {
+  const v = sent?.via ?? 'App';
+  if (v === 'App') return 'Telegram sent a login code <b>inside your Telegram app</b>: open the chat called <b>“Telegram”</b> (blue tick, often at the top or in Archived). Type it here.';
+  if (v === 'Sms' || v === 'SmsWord' || v === 'SmsPhrase' || v === 'FragmentSms') return 'Telegram sent the login code <b>by SMS</b> to your phone. Type it here.';
+  if (v === 'EmailCode') return `Telegram sent the login code to your <b>email</b>${sent.email ? ` (${esc(sent.email)})` : ''}. Type it here.`;
+  if (v === 'Call' || v === 'FlashCall' || v === 'MissedCall') return 'Telegram is <b>calling your phone</b> with the code. Type it here.';
+  if (v === 'SetUpEmailRequired') return 'Telegram wants this account to add a login email first. Open Telegram > Settings > Privacy and Security > Login Email, set it up, then try again.';
+  if (v === 'FirebaseSms') return 'Telegram will send the code by SMS. It can take a minute.';
+  return `Telegram sent a login code (${esc(v)}). Check your Telegram app and SMS, then type it here.`;
+}
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const initials = (n) => String(n || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
@@ -227,12 +237,13 @@ function onboarding() {
   }
   if (step === 'code') {
     return steps(2) + `<h2>Enter the code</h2>
-      <p class="lead">Telegram just sent a login code to your Telegram app (a message from “Telegram”). Type it here.</p>
-      <input class="field code" type="text" inputmode="numeric" id="code" maxlength="6" placeholder="•••••" autocomplete="one-time-code">
+      <p class="lead">${codeWhere()}</p>
+      <input class="field code" type="text" inputmode="numeric" id="code" maxlength="8" placeholder="•••••" autocomplete="one-time-code">
       <div class="err" id="err"></div>
       <button class="btn primary big" data-go="check-code">Connect</button>
       <div class="warn" style="margin-top:14px">⚠️ Only type this code here, inside Kith. Never send it to anyone in a chat. Telegram blocks codes that are forwarded.</div>
-      <button class="btn link" data-go="phone">Send a new code</button>`;
+      ${sent?.canResend ? `<button class="btn link" data-go="resend">Didn't get it? Send it another way</button>` : ''}
+      <button class="btn link" data-go="phone">Change phone number</button>`;
   }
   if (step === 'password') {
     return steps(3) + `<h2>Two-step password</h2>
@@ -253,9 +264,10 @@ async function onboardingAction(go) {
     busy(true);
     if (go === 'send-code') {
       phone = $('#phone').value.trim();
-      await api('/api/mini/login/phone', { phone });
+      sent = await api('/api/mini/login/phone', { phone });
       step = 'code'; render(); setTimeout(() => $('#code')?.focus(), 50);
     }
+    if (go === 'resend') { sent = await api('/api/mini/login/resend', {}); render(); toast('Sent again'); return; }
     if (go === 'check-code' || go === 'check-pw') {
       const r = go === 'check-code'
         ? await api('/api/mini/login/code', { code: $('#code').value, tz: TZ })

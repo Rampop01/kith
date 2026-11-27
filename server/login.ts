@@ -29,10 +29,16 @@ export async function startLogin(userId: string, phone: string) {
   client.setLogLevel('error' as any);
   await client.connect();
   try {
-    const r = await client.sendCode({ apiId: API_ID, apiHash: API_HASH }, phone);
+    const r: any = await client.invoke(new Api.auth.SendCode({ phoneNumber: phone, apiId: API_ID, apiHash: API_HASH, settings: new Api.CodeSettings({}) }));
+    const type = String(r.type?.className ?? r.className).replace(/^auth\.SentCodeType/, '');
+    console.log(`[login ${userId}] code sent via ${type}${r.nextType ? `, next ${r.nextType.className}` : ''}`); // never logs phone or code
+    if (!r.phoneCodeHash) throw new Error(`Telegram did not send a code (${type})`);
     pending.set(userId, { client, phone, hash: r.phoneCodeHash, at: Date.now() });
-    return { sent: true, viaApp: r.isCodeViaApp };
-  } catch (e) { await client.disconnect().catch(() => {}); throw fail(e); }
+    return { sent: true, via: type, email: r.type?.emailPattern ?? '', length: r.type?.length ?? 5, canResend: !!r.nextType };
+  } catch (e: any) {
+    console.log(`[login ${userId}] send code failed: ${e?.errorMessage ?? e?.message}`);
+    await client.disconnect().catch(() => {}); throw fail(e);
+  }
 }
 
 async function finish(userId: string, p: Pending, tz?: string): Promise<Account> {
@@ -45,6 +51,18 @@ async function finish(userId: string, p: Pending, tz?: string): Promise<Account>
   await p.client.disconnect().catch(() => {});
   pending.delete(userId);
   return saveLogin(userId, me, session, tz);
+}
+
+export async function resendCode(userId: string) {
+  const p = pending.get(userId);
+  if (!p) throw Object.assign(new Error('Start again: enter your phone number.'), { status: 400 });
+  try {
+    const r: any = await p.client.invoke(new Api.auth.ResendCode({ phoneNumber: p.phone, phoneCodeHash: p.hash }));
+    p.hash = r.phoneCodeHash; p.at = Date.now();
+    const type = String(r.type?.className ?? '').replace(/^auth\.SentCodeType/, '');
+    console.log(`[login ${userId}] code resent via ${type}`);
+    return { sent: true, via: type, email: r.type?.emailPattern ?? '', length: r.type?.length ?? 5, canResend: !!r.nextType };
+  } catch (e: any) { console.log(`[login ${userId}] resend failed: ${e?.errorMessage ?? e?.message}`); throw fail(e); }
 }
 
 export async function submitCode(userId: string, code: string, tz?: string) {
