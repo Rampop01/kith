@@ -253,7 +253,7 @@ function onboarding() {
   if (step === 'qr') {
     const mobile = ['ios', 'android'].includes(tg?.platform);
     const body = qr?.status === 'error' ? `<div class="err">${esc(qr.error)}</div><button class="btn primary big" data-go="qr">Try again</button>`
-      : qr?.svg ? `<div class="qr">${qr.svg}</div>`
+      : qr?.svg ? `<div class="qr">${qr.svg}</div>${mobile ? `<a class="btn big" style="display:block;text-align:center;text-decoration:none;margin-bottom:12px" href="${esc(qr.url)}">Only one phone? Approve on this phone</a>` : ''}`
       : `<div class="card empty">Making your QR code…</div>`;
     return steps(1) + `<h2>Scan to connect</h2>
       <p class="lead">Approve Kith from Telegram on your phone, like linking Telegram Desktop. No code needed.</p>
