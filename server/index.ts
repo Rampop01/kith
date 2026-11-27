@@ -8,7 +8,7 @@ import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
 import { kv } from './db.ts';
 import { getAccount, saveLogin, connectedUserIds, userKey, API_ID, API_HASH, MAX_CHOSEN, type Account, type UserRec } from './account.ts';
-import { startLogin, resendCode, submitCode, submitPassword } from './login.ts';
+import { startLogin, resendCode, submitCode, submitPassword, startQr, qrStatus, qrPassword } from './login.ts';
 import { startBot } from './bot.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -97,9 +97,17 @@ function html(res: ServerResponse, file: string) {
   res.end(readFileSync(new URL(file, import.meta.url)));
 }
 
+const announced = new Set<string>();
 async function miniRoutes(req: IncomingMessage, res: ServerResponse, path: string) {
   const u = miniUser(req);
   const a = await getAccount(u.id);
+  const connected = async (acc: Account) => { // first time this login finished: read the chat list, tell the admin
+    if (announced.has(acc.id)) return;
+    announced.add(acc.id);
+    await acc.loadDialogs().catch(() => {});
+    const n = (await connectedUserIds()).length;
+    bot?.adminNotify(`🆕 New Kith user: <b>${u.name || 'someone'}</b>${u.username ? ` (@${u.username})` : ''}. Beta ${n}/${BETA_MAX}.`).catch(() => {});
+  };
 
   if (req.method === 'GET' && path === '/api/mini/me') {
     return reply(res, 200, { user: u, connected: !!a, beta: await betaInfo(u.id), bot: bot?.username ?? '', state: a?.miniState() });
@@ -110,14 +118,26 @@ async function miniRoutes(req: IncomingMessage, res: ServerResponse, path: strin
     if (!a && (await betaInfo(u.id)).full) throw httpError(403, 'The beta is full. Join the waitlist.');
     return reply(res, 200, await startLogin(u.id, String((await json(req)).phone ?? '')));
   }
+  if (path === '/api/mini/login/qr') {
+    if (req.method === 'POST') {
+      if (!a && (await betaInfo(u.id)).full) throw httpError(403, 'The beta is full. Join the waitlist.');
+      const { account, ...r } = await startQr(u.id, (await json(req)).tz);
+      return reply(res, 200, r);
+    }
+    const { account, ...r } = await qrStatus(u.id);
+    if (r.status === 'done' && account) { await connected(account); return reply(res, 200, { ...r, connected: true, state: account.miniState() }); }
+    return reply(res, 200, r);
+  }
+  if (req.method === 'POST' && path === '/api/mini/login/qr/password') {
+    if (!qrPassword(u.id, String((await json(req)).password ?? ''))) throw httpError(400, 'Start again: tap “Show QR code”.');
+    return reply(res, 200, { ok: true });
+  }
   if (req.method === 'POST' && path === '/api/mini/login/resend') return reply(res, 200, await resendCode(u.id));
   if (req.method === 'POST' && (path === '/api/mini/login/code' || path === '/api/mini/login/password')) {
     const b = await json(req);
     const r = path.endsWith('code') ? await submitCode(u.id, String(b.code ?? ''), b.tz) : await submitPassword(u.id, String(b.password ?? ''), b.tz);
     if ('needPassword' in r) return reply(res, 200, { needPassword: true });
-    await r.account.loadDialogs().catch(() => {});
-    const n = (await connectedUserIds()).length;
-    bot?.adminNotify(`🆕 New Kith user: <b>${u.name || 'someone'}</b>${u.username ? ` (@${u.username})` : ''}. Beta ${n}/${BETA_MAX}.`).catch(() => {});
+    await connected(r.account);
     return reply(res, 200, { connected: true, state: r.account.miniState() });
   }
   if (req.method === 'POST' && path === '/api/mini/waitlist') {

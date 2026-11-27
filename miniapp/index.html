@@ -60,6 +60,8 @@
   .chip.none { background: #eef3f8; color: #7f93a8; }
   .actions { display: none; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .open .actions, .actions.show { display: flex; }
+  .qr { background: #fff; border-radius: 20px; padding: 14px; margin: 0 auto 12px; max-width: 280px; box-shadow: 0 6px 18px rgba(30,110,200,.12); }
+  .qr svg { display: block; width: 100%; height: auto; }
   .card input:not([type]) { min-width: 0; font: inherit; font-size: 15px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
   .btn { border: 0; font: inherit; font-weight: 600; font-size: 14px; padding: 9px 12px; border-radius: 12px; cursor: pointer; background: #e9f4ff; color: #1f74d1; }
   .btn.primary { background: linear-gradient(135deg, var(--sky), var(--sky2)); color: #fff; box-shadow: 0 4px 12px rgba(58,160,255,.35); }
@@ -133,7 +135,29 @@ const success = () => { try { tg?.HapticFeedback.notificationOccurred('success')
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 let me = null, state = null, tab = ['promises', 'people', 'chats', 'you'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'promises';
-let open = null, query = '', chosen = null, step = 'welcome', phone = '', sent = null;
+let open = null, query = '', chosen = null, step = 'welcome', phone = '', sent = null, qr = null, qrTimer = null;
+function connectedNow(r) {
+  clearTimeout(qrTimer); success();
+  me.connected = true; state = r.state; tab = 'chats'; chosen = []; step = 'welcome';
+  render(); toast('Connected! Now pick the people Kith should remember.');
+}
+async function qrPoll() {
+  clearTimeout(qrTimer);
+  if (step !== 'qr' && step !== 'qrpw') return;
+  try {
+    const r = await api('/api/mini/login/qr');
+    if (r.connected) return connectedNow(r);
+    if (r.status === 'expired') { qr = await api('/api/mini/login/qr', { tz: TZ }); render(); }
+    else {
+      const changed = r.status !== qr?.status || r.url !== qr?.url || r.error !== qr?.error;
+      qr = r;
+      if (r.status === 'password' && step === 'qr') { step = 'qrpw'; render(); setTimeout(() => $('#qpw')?.focus(), 50); }
+      else if (changed) render();
+      if (r.status === 'error') return;
+    }
+  } catch (e) { qr = { status: 'error', error: e.message }; if (step === 'qr') render(); return; }
+  qrTimer = setTimeout(qrPoll, 2000);
+}
 function codeWhere() {
   const v = sent?.via ?? 'App';
   if (v === 'App') return 'Telegram sent a login code <b>inside your Telegram app</b>: open the chat called <b>“Telegram”</b> (blue tick, often at the top or in Archived). Type it here.';
@@ -222,10 +246,33 @@ function onboarding() {
         <div class="feature"><div class="icon">🔒</div><div><b>You stay in control</b><span>Kith reads only the chats you pick. Nothing is sent without your tap. Test mode is on until you turn it off. Delete everything any time.</span></div></div>
       </div>
       <div class="card">${bar}</div>
-      <button class="btn primary big" data-go="phone">Connect my Telegram</button>
+      <button class="btn primary big" data-go="qr">Connect my Telegram</button>
       <p class="meta" style="text-align:center">Free beta · <a href="https://github.com/Rampop01/kith" target="_blank">Open source</a></p>`;
   }
   const steps = (n) => `<div class="steps">${[1, 2, 3].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div>`;
+  if (step === 'qr') {
+    const mobile = ['ios', 'android'].includes(tg?.platform);
+    const body = qr?.status === 'error' ? `<div class="err">${esc(qr.error)}</div><button class="btn primary big" data-go="qr">Try again</button>`
+      : qr?.svg ? `<div class="qr">${qr.svg}</div>`
+      : `<div class="card empty">Making your QR code…</div>`;
+    return steps(1) + `<h2>Scan to connect</h2>
+      <p class="lead">Approve Kith from Telegram on your phone, like linking Telegram Desktop. No code needed.</p>
+      ${mobile ? `<div class="note">📱 <b>On your phone right now?</b> Show this QR on a second screen: open @${esc(me.bot || 'kith_memory_bot')} in <b>Telegram Desktop</b> or <b>web.telegram.org</b>, tap Kith, then scan it with this phone.</div>` : ''}
+      ${body}
+      <div class="card"><ol style="margin:0;padding-left:20px">
+        <li>On your phone, open <b>Telegram › Settings › Devices</b></li>
+        <li>Tap <b>Link Desktop Device</b></li>
+        <li>Scan this code. It refreshes by itself.</li></ol></div>
+      <div class="note">🔐 Kith keeps your Telegram login encrypted and uses it only to read the chats you pick and to send messages you approve. Disconnect in one tap, which also logs Kith out.</div>
+      <button class="btn link" data-go="phone">Use a login code instead</button>`;
+  }
+  if (step === 'qrpw') {
+    return steps(3) + `<h2>Two-step password</h2>
+      <p class="lead">You scanned it. Your Telegram has two-step verification on (good!). Enter that password to finish.</p>
+      <input class="field" type="password" id="qpw" placeholder="${esc(qr?.hint ? 'Hint: ' + qr.hint : 'Password')}" autocomplete="current-password">
+      <div class="err" id="err">${esc(qr?.error ?? '')}</div>
+      <button class="btn primary big" data-go="qr-pw">Connect</button>`;
+  }
   if (step === 'phone') {
     return steps(1) + `<h2>Your phone number</h2>
       <p class="lead">The one your Telegram uses. Telegram will send you a login code, just like signing in on a new device.</p>
@@ -233,7 +280,7 @@ function onboarding() {
       <div class="err" id="err"></div>
       <button class="btn primary big" data-go="send-code">Send code</button>
       <div class="note" style="margin-top:14px">🔐 Kith keeps your Telegram login encrypted and uses it only to read the chats you pick and to send messages you approve. You can disconnect in one tap, which also logs Kith out of your Telegram.</div>
-      <button class="btn link" data-go="welcome">Back</button>`;
+      <button class="btn link" data-go="qr">Back to QR code</button>`;
   }
   if (step === 'code') {
     return steps(2) + `<h2>Enter the code</h2>
@@ -260,7 +307,16 @@ async function onboardingAction(go) {
   const busy = (on) => document.querySelectorAll('[data-go]').forEach((b) => (b.disabled = on));
   try {
     if (go === 'waitlist') { const r = await api('/api/mini/waitlist', {}); me.beta.waitlisted = true; success(); toast(`You're #${r.position} on the waitlist`); return render(); }
-    if (go === 'welcome' || go === 'phone') { step = go; render(); return (go === 'phone') && setTimeout(() => $('#phone')?.focus(), 50); }
+    if (go === 'qr') {
+      step = 'qr'; qr = null; render();
+      try { qr = await api('/api/mini/login/qr', { tz: TZ }); } catch (e) { qr = { status: 'error', error: e.message }; }
+      render(); return qrPoll();
+    }
+    if (go === 'qr-pw') {
+      await api('/api/mini/login/qr/password', { password: $('#qpw').value });
+      qr = { ...qr, status: 'waiting', error: '' }; err('Checking…'); return qrPoll();
+    }
+    if (go === 'welcome' || go === 'phone') { clearTimeout(qrTimer); step = go; render(); return (go === 'phone') && setTimeout(() => $('#phone')?.focus(), 50); }
     busy(true);
     if (go === 'send-code') {
       phone = $('#phone').value.trim();
