@@ -104,7 +104,9 @@ async function miniRoutes(req: IncomingMessage, res: ServerResponse, path: strin
   const connected = async (acc: Account) => { // first time this login finished: read the chat list, tell the admin
     if (announced.has(acc.id)) return;
     announced.add(acc.id);
-    await acc.loadDialogs().catch(() => {});
+    for (let i = 0; i < 3; i++) { // a fresh login sometimes needs a moment before Telegram serves the chat list
+      try { await acc.loadDialogs(); break; } catch (e: any) { console.log(`[${acc.id}] chat list failed (try ${i + 1}): ${e.message}`); await new Promise((r) => setTimeout(r, 3000)); }
+    }
     const n = (await connectedUserIds()).length;
     bot?.adminNotify(`🆕 New Kith user: <b>${u.name || 'someone'}</b>${u.username ? ` (@${u.username})` : ''}. Beta ${n}/${BETA_MAX}.`).catch(() => {});
   };

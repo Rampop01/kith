@@ -420,7 +420,12 @@ function peopleList(metHtml) {
 }
 
 // ================= chats =================
+let chatsAsked = 0;
 function chatsView() {
+  if (!state.chats.length && !state.indexing && Date.now() - chatsAsked > 15000) { // empty list: ask the server to read chats again
+    chatsAsked = Date.now();
+    api('/api/mini/refresh', {}).then((r) => { state = r; render(); poll(); }).catch(() => {});
+  }
   const sel = chosen ?? state.chats.filter((c) => c.chosen).map((c) => c.id);
   const max = state.me.maxChats;
   return `<div class="note">🔒 Kith reads <b>only</b> the chats you switch on (up to ${max} in the beta). Switching one off makes Kith forget what it learned from it.${state.demo ? '<br><b>Demo mode:</b> only demo chats are shown.' : ''}</div>
