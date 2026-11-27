@@ -315,6 +315,11 @@ async function importLocalSession() {
 
 await importLocalSession().catch((e) => console.log('local import skipped:', e.message));
 server.listen(PORT, () => console.log(`Kith server on :${PORT}  ${publicUrl() || '(no public URL yet)'}`));
+// Render's free plan sleeps after 15 minutes without outside requests, and a sleeping server misses bot messages.
+// Ping our own public URL every 10 minutes so Kith stays awake.
+if (process.env.RENDER_EXTERNAL_URL) setInterval(() => {
+  fetch(publicUrl() + '/health', { signal: AbortSignal.timeout(30_000) }).catch((e) => console.log('self-ping failed:', e.message));
+}, 10 * 60_000);
 bot = await startBot({ appUrl, adminId: ADMIN_ID }).catch((e) => { console.log('Bot failed to start:', e.message); return undefined; });
 // warm up: refresh every user's chats on boot (one at a time)
 (async () => {
