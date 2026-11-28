@@ -4,6 +4,17 @@
 
 Kith is an app for Even Realities G2 smart glasses (Track 01: Messaging). It reads your own Telegram chats, finds the people you talk to and the promises you made them, and shows them on your glasses when you need them. No camera. Nothing is sent to anyone without your tap.
 
+**Even AI answers questions. Kith knows your people:** who is in front of you, what you last talked about, and what you promised them, from your own Telegram, with one-tap delivery back through Telegram.
+
+**Try the free beta:** open [@kith_memory_bot](https://t.me/kith_memory_bot) in Telegram · landing page: https://kith-tcf8.onrender.com
+
+## Get started (about a minute)
+
+1. Open **@kith_memory_bot** in Telegram and tap **Kith** (the Mini App opens).
+2. Tap **Connect my Telegram** and scan the QR code with Telegram on your phone (**Settings › Devices › Link Desktop Device**), the same way Telegram Desktop logs in. A login code works too.
+3. **Choose the chats** Kith may read (up to 15 in the beta).
+4. Open Kith on your G2: it shows a **6-digit code**. Type it in the Mini App's **You** tab. Your glasses are paired.
+
 ## What it does
 
 | Feature | How it works |
@@ -35,11 +46,14 @@ Kith server (server/index.ts, Node)
    ├─ Telegram user account via MTProto (GramJS): reads your chats, sends on your tap
    ├─ Groq: gpt-oss-120b finds people and promises; whisper-large-v3-turbo turns speech into text
    ├─ Telegram bot (server/bot.ts): daily digest, Done buttons, promise recaps
-   └─ Telegram Mini App (miniapp/index.html at /mini), reached through an https tunnel
+   └─ Telegram Mini App (miniapp/index.html at /mini): sign-in, chat picker, promises, people, settings
 ```
 
+- **Hosted:** Render (web service from `render.yaml`) with Neon Postgres. Each user's Telegram login is encrypted (AES-256-GCM) before it is stored.
+- **Multi-user:** anyone can join the beta from the bot. Glasses pair to one account with a 6-digit code; every request is tied to that account.
+
 - The AI copies deadline words exactly as written ("friday", "dec 3"). Kith's own code turns them into dates, relative to when the message was sent, so dates don't depend on the AI's calendar maths.
-- Data is cached locally in `data/` (gitignored).
+- Locally (no `DATABASE_URL`) data is kept in `data/` (gitignored).
 
 ## Safety and privacy
 
@@ -51,7 +65,7 @@ Kith server (server/index.ts, Node)
 - **Mini App security:** every request carries Telegram's signed `initData`. The server checks the signature with the bot token, so a user can only reach their own account. The glasses API needs the device token from pairing.
 - **You choose the chats.** Kith reads only the chats switched on in the Mini App.
 - **Meeting strangers, with consent:** Kith only listens while you hold the touchpad or choose "Listen", and it keeps short text notes, never audio. Recording laws differ by country: tell people you're taking notes. A username is only connected after you confirm the name Telegram shows, and "Forget them" deletes a meeting.
-- Chat text and audio are sent to Groq for AI processing. Sessions and keys stay on your machine (`.env`, `.tg-session`, `.bot-session`, all gitignored).
+- Chat text and audio are sent to Groq for AI processing; Kith stores only what it found (people, promises, short notes), never chat text or audio. Secrets live in environment variables, never in the repo.
 
 ## Run it
 
@@ -68,7 +82,9 @@ npm run tunnel              # public https link for the Telegram Mini App (sets 
 npm run pack                # build kith.ehpk for real glasses
 ```
 
-`npm run server:demo` runs demo mode (live sending, only the chats in `KITH_DEMO_IDS`).
+`npm run server:demo` runs demo mode (only the chats in `KITH_DEMO_IDS`).
+
+**Deploy your own:** Render → New → Blueprint → this repo, then fill in `DATABASE_URL` (Neon), `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`. Build the glasses app against it with `VITE_KITH_SERVER=https://your-app.onrender.com npm run pack`.
 
 ## What existed before November 23
 
@@ -76,7 +92,7 @@ Nothing. Kith was built from scratch during the hackathon (Nov 23–29, 2026). W
 
 ## API feature requests for Even Realities
 
-1. **Background or notification mode:** let an app show a short alert (e.g. "Bimbim is calling: you owe her the deck") without being open.
+1. **Background or notification mode:** let an app show a short alert (e.g. "Bimbim is calling: you owe them the deck") without being open.
 2. **Wake word or button shortcut** that opens a chosen app straight into a mode (e.g. Promise catcher), so you don't open it mid-conversation.
 3. **Speaker separation in `audioEvent`** (self vs. other, per frame) on all devices, so we can tell "I'll send it" from "you'll send it".
 4. **On-device or SDK speech-to-text,** so audio doesn't have to leave the phone.
