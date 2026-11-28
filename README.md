@@ -15,6 +15,44 @@ Kith is an app for Even Realities G2 smart glasses (Track 01: Messaging). It rea
 3. **Choose the chats** Kith may read (up to 15 in the beta).
 4. Open Kith on your G2: it shows a **6-digit code**. Type it in the Mini App's **You** tab. Your glasses are paired.
 
+## User flow
+
+Real screens from the Kith Mini App, the Telegram bot and the Kith glasses app (captured in the Even Hub simulator).
+
+### 1. Connect your Telegram (phone, about a minute)
+
+<table>
+<tr><td align="center" valign="top"><img src="docs/flow/1-welcome.jpg" width="190"><br><sub><b>1.</b> Open @kith_memory_bot, tap <b>Kith</b>, then <b>Connect</b></sub></td><td align="center" valign="top"><img src="docs/flow/2-scan.jpg" width="190"><br><sub><b>2.</b> Scan with Telegram › Settings › Devices (or use a login code)</sub></td><td align="center" valign="top"><img src="docs/flow/3-chats.jpg" width="190"><br><sub><b>3.</b> Switch on the chats Kith may read</sub></td><td align="center" valign="top"><img src="docs/flow/4-pair-code.jpg" width="190"><br><sub><b>4.</b> Type the code your glasses show</sub></td></tr>
+</table>
+
+### 2. Pair your G2
+
+<table>
+<tr><td align="center" valign="top"><img src="docs/flow/g-pair.png" width="290"><br><sub>Kith on the glasses shows a 6-digit code</sub></td><td align="center" valign="top"><img src="docs/flow/g-home.png" width="290"><br><sub>Paired: your promises, soonest first</sub></td></tr>
+</table>
+
+### 3. Meet someone you know
+
+<table>
+<tr><td align="center" valign="top"><img src="docs/flow/g-listening.png" width="290"><br><sub><b>Hold</b> the touchpad while they say their name</sub></td><td align="center" valign="top"><img src="docs/flow/g-card.png" width="290"><br><sub>Who they are, last chat, what you owe, what they owe you</sub></td></tr>
+<tr><td align="center" valign="top"><img src="docs/flow/g-catch.png" width="290"><br><sub><b>Catch promises</b>: say “I’ll send you the deck by Friday”</sub></td><td align="center" valign="top"><img src="docs/flow/g-caught.png" width="290"><br><sub>Saved with real deadlines; a recap goes to Telegram</sub></td></tr>
+<tr><td align="center" valign="top"><img src="docs/flow/g-send.png" width="290"><br><sub>Later: pick a promise, check the drafted message</sub></td><td align="center" valign="top"><img src="docs/flow/g-sent.png" width="290"><br><sub>One tap sends it on Telegram. Promise kept.</sub></td></tr>
+</table>
+
+### 4. Meet someone new (no chat history needed)
+
+<table>
+<tr><td align="center" valign="top"><img src="docs/flow/g-new.png" width="290"><br><sub>“Hi, I’m Amara Obi, I build payments at Lumen.”</sub></td><td align="center" valign="top"><img src="docs/flow/g-listen-new.png" width="290"><br><sub><b>Listen</b>: notes, promises and their Telegram @username</sub></td></tr>
+<tr><td align="center" valign="top"><img src="docs/flow/g-new-caught.png" width="290"><br><sub>A promise is caught while you talk</sub></td><td align="center" valign="top"><img src="docs/flow/g-found.png" width="290"><br><sub>Notes saved, @username found on Telegram</sub></td></tr>
+<tr><td align="center" valign="top"><img src="docs/flow/g-connect.png" width="290"><br><sub>Telegram shows its name for that account: you confirm it’s them</sub></td><td align="center" valign="top"><img src="docs/flow/g-hello.png" width="290"><br><sub>A hello is drafted. One tap sends it.</sub></td></tr>
+</table>
+
+### 5. Your phone keeps it all together
+
+<table>
+<tr><td align="center" valign="top"><img src="docs/flow/phone-promises.jpg" width="190"><br><sub><b>Promises</b>: what you owe, from chats and said in person</sub></td><td align="center" valign="top"><img src="docs/flow/phone-people.jpg" width="190"><br><sub><b>People</b>: people you met, and people from your chats</sub></td><td align="center" valign="top"><img src="docs/flow/phone-bot.jpg" width="190"><br><sub><b>Bot</b>: daily digest at your hour, ✅ Done buttons</sub></td></tr>
+</table>
+
 ## What it does
 
 | Feature | How it works |
