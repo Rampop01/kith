@@ -284,7 +284,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   try {
     if (req.method === 'OPTIONS') return reply(res, 204, {});
-    if (path === '/health') return reply(res, 200, { ok: true });
+    if (path === '/health') return reply(res, 200, { ok: true, bot: bot ? { ...bot.status } : null, version: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? 'local' });
     if (req.method === 'GET' && (path === '/mini' || path === '/mini/')) return html(res, '../miniapp/index.html');
     if (req.method === 'GET' && path === '/') return html(res, '../miniapp/landing.html');
     if (path.startsWith('/api/mini/')) return await miniRoutes(req, res, path);

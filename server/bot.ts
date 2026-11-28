@@ -22,6 +22,21 @@ export async function startBot(deps: Deps) {
   await kv.set('bot:session', String(bot.session.save()));
   const me: any = await bot.getMe();
 
+  // Watchdog: after a network drop (or the host pausing us) Telegram can stop pushing updates to this session
+  // until we ask again. Every minute: reconnect if needed and call updates.GetState, which resumes the stream.
+  const status = { ok: true, lastCheck: '', lastMessage: '', error: '' };
+  setInterval(async () => {
+    try {
+      if (!bot.connected) await bot.connect();
+      await bot.invoke(new Api.updates.GetState());
+      status.ok = true; status.error = ''; status.lastCheck = new Date().toISOString();
+    } catch (e: any) {
+      status.ok = false; status.error = e.message;
+      console.log('bot watchdog:', e.message);
+    }
+  }, 60_000);
+  await bot.invoke(new Api.updates.GetState()).catch(() => {});
+
   const appButton = (text = '📋 Open Kith') => {
     const url = deps.appUrl();
     return url ? [new Api.KeyboardButtonWebView({ text, url })] : [];
@@ -67,6 +82,7 @@ export async function startBot(deps: Deps) {
   const sendDigest = async (a: Account) => { const d = digest(a); await send(a.id, d.text, d.buttons); };
 
   bot.addEventHandler(async (ev: NewMessageEvent) => {
+    status.lastMessage = new Date().toISOString();
     const m = ev.message;
     if (!m.isPrivate || m.out) return;
     const uid = String(m.senderId);
@@ -128,6 +144,7 @@ export async function startBot(deps: Deps) {
   console.log(`Bot @${me.username} ready.`);
   return {
     username: me.username as string,
+    status,
     notify: (userId: string, html: string) => send(userId, html).then(() => {}),
     sendDigest,
     adminNotify: (html: string) => (deps.adminId ? send(deps.adminId, html).then(() => {}) : Promise.resolve()),
