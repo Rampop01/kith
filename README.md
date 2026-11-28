@@ -53,7 +53,7 @@ Kith server (server/index.ts, Node)
 - **Multi-user:** anyone can join the beta from the bot. Glasses pair to one account with a 6-digit code; every request is tied to that account.
 
 - The AI copies deadline words exactly as written ("friday", "dec 3"). Kith's own code turns them into dates, relative to when the message was sent, so dates don't depend on the AI's calendar maths.
-- Locally (no `DATABASE_URL`) data is kept in `data/` (gitignored).
+- The live beta stores data in Postgres (Neon). When a developer runs Kith on their own computer without a database, it uses a local `data/` folder instead, which is never uploaded to GitHub.
 
 ## Safety and privacy
 
