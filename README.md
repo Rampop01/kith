@@ -26,7 +26,7 @@ Kith is an app for Even Realities G2 smart glasses (Track 01: Messaging). It rea
 | **Promise catcher** | During a face-to-face conversation, choose "Catch promises". Kith listens through the glasses mic and catches commitments you say out loud ("I'll send you the deck by Friday"). They are saved with a real date, and a recap arrives in Telegram. |
 | **One-tap deliver** | Choose a promise, check the drafted message, tap to send it to that person on Telegram. The promise is marked kept. |
 | **Telegram Mini App** | Tap **Kith** in the bot's chat. A light-blue home base on your phone: everything you owe (overdue first), what people owe you, and person cards. Mark promises done, change dates, fix or remove anything the AI got wrong. **Chats tab:** choose exactly which chats Kith may read; switching one off makes Kith forget what it learned from it. |
-| **Telegram bot** | `@kith_memory_bot` sends a morning digest of what you owe, with ✅ Done buttons. `/today` gets it any time. Each user only ever sees their own data. |
+| **Telegram bot** | `@kith_memory_bot` sends a daily digest of what you owe at the hour you choose (Mini App › You, in your own time zone), with ✅ Done buttons, plus an evening recap of the people you met. `/today` gets it any time. Each user only ever sees their own data. |
 
 ### Glasses controls
 
