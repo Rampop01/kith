@@ -5,6 +5,7 @@ import { StringSession } from 'telegram/sessions/index.js';
 import { NewMessage, type NewMessageEvent } from 'telegram/events/index.js';
 import { CallbackQuery, type CallbackQueryEvent } from 'telegram/events/CallbackQuery.js';
 import { Button } from 'telegram/tl/custom/button.js';
+import bigInt from 'big-integer';
 import { kv } from './db.ts';
 import { API_ID, API_HASH, getAccount, connectedUserIds, type Account } from './account.ts';
 
@@ -29,7 +30,7 @@ export async function startBot(deps: Deps) {
     try {
       if (!bot.connected) await bot.connect();
       await bot.invoke(new Api.updates.GetState());
-      status.ok = true; status.error = ''; status.lastCheck = new Date().toISOString();
+      status.ok = true; status.lastCheck = new Date().toISOString();
     } catch (e: any) {
       status.ok = false; status.error = e.message;
       console.log('bot watchdog:', e.message);
@@ -77,16 +78,27 @@ export async function startBot(deps: Deps) {
     return `🌙 <b>You met ${met.length} new ${met.length === 1 ? 'person' : 'people'} today</b>\n\n${lines.join('\n')}\n\nSay hi while it's fresh.`;
   };
 
-  const send = (userId: string, message: string, buttons?: any) =>
-    bot.sendMessage(userId, { message, parseMode: 'html', buttons, linkPreview: false });
+  // A bot can only message a user with their access hash. The library keeps it in memory only, so after a restart it is
+  // gone: store it in the database whenever the user writes to us, and rebuild the peer from it.
+  const peerFor = async (userId: string) => {
+    const h = await kv.get<string>(`botpeer:${userId}`);
+    return h ? new Api.InputPeerUser({ userId: bigInt(userId), accessHash: bigInt(h) }) : userId;
+  };
+  const send = async (userId: string, message: string, buttons?: any) => {
+    try { await bot.sendMessage(await peerFor(userId), { message, parseMode: 'html', buttons, linkPreview: false }); }
+    catch (e: any) { console.log(`bot send to ${userId} failed: ${e.message}`); throw e; }
+  };
   const sendDigest = async (a: Account) => { const d = digest(a); await send(a.id, d.text, d.buttons); };
 
-  bot.addEventHandler(async (ev: NewMessageEvent) => {
+  bot.addEventHandler((ev: NewMessageEvent) => onMessage(ev).catch((e) => { status.error = 'reply: ' + e.message; console.log('bot reply failed:', e.message); }), new NewMessage({}));
+  async function onMessage(ev: NewMessageEvent) {
     status.lastMessage = new Date().toISOString();
     const m = ev.message;
     if (!m.isPrivate || m.out) return;
     const uid = String(m.senderId);
     await kv.set(`botuser:${uid}`, true); // they started the bot, so we may message them
+    try { const p: any = await m.getInputChat(); if (p?.accessHash) await kv.set(`botpeer:${uid}`, String(p.accessHash)); }
+    catch (e: any) { console.log('bot: could not read sender:', e.message); }
     const text = (m.message ?? '').trim();
     const a = await getAccount(uid);
     if (!a) {
@@ -103,7 +115,7 @@ export async function startBot(deps: Deps) {
     if (text.startsWith('/today')) return sendDigest(a);
     if (text.startsWith('/app')) return send(uid, 'Your promises, people and settings:', rows(appButton()));
     return send(uid, 'Commands: /today (what you owe), /app (open Kith)');
-  }, new NewMessage({}));
+  }
 
   bot.addEventHandler(async (ev: CallbackQueryEvent) => {
     const uid = String(ev.query.userId);

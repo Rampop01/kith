@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.16",
+    "big-integer": "^1.6.52",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
