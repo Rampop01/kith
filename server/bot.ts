@@ -42,7 +42,12 @@ export async function startBot(deps: Deps) {
     const url = deps.appUrl();
     return url ? [new Api.KeyboardButtonWebView({ text, url })] : [];
   };
-  const rows = (...r: any[][]) => { const x = r.filter((row) => row.length); return x.length ? x : undefined; };
+  // Always attach buttons to the message (inline). The library otherwise turns a lone Mini App button into a reply-keyboard
+  // button, which Telegram rejects with BUTTON_TYPE_INVALID.
+  const rows = (...r: any[][]) => {
+    const x = r.filter((row) => row.length);
+    return x.length ? new Api.ReplyInlineMarkup({ rows: x.map((row) => new Api.KeyboardButtonRow({ buttons: row })) }) : undefined;
+  };
 
   let menuUrl = '';
   const syncMenu = async () => {
